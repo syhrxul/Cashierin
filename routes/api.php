@@ -32,6 +32,16 @@ Route::middleware('auth:sanctum')->group(function () {
     // Product routes
     Route::apiResource('products', ProductController::class);
 
+    // Shift routes
+    Route::get('/shifts/active', [\App\Http\Controllers\Api\ShiftController::class, 'active']);
+    Route::post('/shifts/{id}/close', [\App\Http\Controllers\Api\ShiftController::class, 'close']);
+    Route::apiResource('shifts', \App\Http\Controllers\Api\ShiftController::class);
+
+    // Shift Request routes 
+    Route::post('/shift-requests/{id}/approve', [\App\Http\Controllers\Api\ShiftRequestController::class, 'approve']);
+    Route::post('/shift-requests/{id}/reject', [\App\Http\Controllers\Api\ShiftRequestController::class, 'reject']);
+    Route::apiResource('shift-requests', \App\Http\Controllers\Api\ShiftRequestController::class);
+
     // License key routes
     Route::post('/license-keys/activate', [LicenseKeyController::class, 'activate']);
     Route::apiResource('license-keys', LicenseKeyController::class);
