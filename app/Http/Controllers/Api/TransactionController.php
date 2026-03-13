@@ -3,19 +3,18 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Coupon;
 use App\Models\Product;
+use App\Models\Promotion;
 use App\Models\Shift;
 use App\Models\Transaction;
-use App\Models\TransactionItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class TransactionController extends Controller
 {
-    /**
-     * Display a listing of transactions.
-     */
+
     public function index(Request $request)
     {
         $query = Transaction::with(['user', 'items.product']);
@@ -32,26 +31,21 @@ class TransactionController extends Controller
             $query->whereBetween('created_at', [$request->start_date, $request->end_date]);
         }
 
-        return response()->json([
-            'data' => $query->latest()->paginate(10)
-        ]);
+        return response()->json(['data' => $query->latest()->paginate(10)]);
     }
 
-    /**
-     * Store a newly created transaction (Checkout).
-     */
     public function store(Request $request)
     {
         $request->validate([
-            'store_id' => 'required|exists:stores,id',
-            'items' => 'required|array|min:1',
+            'store_id'       => 'required|exists:stores,id',
+            'items'          => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
-            'items.*.quantity' => 'required|integer|min:1',
-            'discount_amount' => 'nullable|numeric|min:0',
+            'items.*.quantity'   => 'required|integer|min:1',
+            'coupon_code'    => 'nullable|string',
             'payment_method' => 'required|in:cash,debit,credit,qris',
         ]);
 
-        // Verifikasi shift aktif
+        // Cek shift aktif
         $activeShift = Shift::where('user_id', $request->user()->id)
             ->where('status', 'open')
             ->first();
@@ -64,58 +58,175 @@ class TransactionController extends Controller
 
         try {
             return DB::transaction(function () use ($request, $activeShift) {
-                $subtotal = 0;
+                $subtotal        = 0;
+                $productDiscount = 0;
                 $transactionItems = [];
+                $cartProductMap   = []; // [product_id => qty] untuk cek promosi
 
+                // ========================
+                // STEP 1: Hitung item
+                // ========================
                 foreach ($request->items as $itemData) {
-                    $product = Product::lockForUpdate()->find($itemData['product_id']);
+                    $product = Product::lockForUpdate()->findOrFail($itemData['product_id']);
 
-                    // Cek stok
                     if ($product->stock !== null && $product->stock < $itemData['quantity']) {
                         throw new \Exception("Stok produk '{$product->name}' tidak mencukupi. Sisa: {$product->stock}");
                     }
 
-                    $itemSubtotal = $product->price * $itemData['quantity'];
-                    $subtotal += $itemSubtotal;
+                    $originalPrice = $product->price;
+
+                    // === Diskon Per Produk ===
+                    $itemDiscountedPrice = $originalPrice;
+                    if ($product->discount_type !== 'none' && $product->discount_value > 0) {
+                        $isDiscountActive = true;
+                        if ($product->discount_starts_at && now()->lt($product->discount_starts_at)) $isDiscountActive = false;
+                        if ($product->discount_ends_at && now()->gt($product->discount_ends_at)) $isDiscountActive = false;
+
+                        if ($isDiscountActive) {
+                            if ($product->discount_type === 'percentage') {
+                                $itemDiscountedPrice = $originalPrice - ($originalPrice * $product->discount_value / 100);
+                            } else {
+                                $itemDiscountedPrice = max(0, $originalPrice - $product->discount_value);
+                            }
+                        }
+                    }
+
+                    $lineDiscount = ($originalPrice - $itemDiscountedPrice) * $itemData['quantity'];
+                    $productDiscount += $lineDiscount;
+
+                    $itemSubtotal = $itemDiscountedPrice * $itemData['quantity'];
+                    $subtotal     += $originalPrice * $itemData['quantity']; // subtotal sebelum diskon
 
                     $transactionItems[] = [
-                        'product_id' => $product->id,
+                        'product_id'   => $product->id,
                         'product_name' => $product->name,
-                        'price' => $product->price,
-                        'quantity' => $itemData['quantity'],
-                        'subtotal' => $itemSubtotal,
+                        'price'        => $itemDiscountedPrice,
+                        'quantity'     => $itemData['quantity'],
+                        'subtotal'     => $itemSubtotal,
                     ];
 
-                    // Kurangi stok jika dikelola
+                    $cartProductMap[$product->id] = ($cartProductMap[$product->id] ?? 0) + $itemData['quantity'];
+
                     if ($product->stock !== null) {
                         $product->decrement('stock', $itemData['quantity']);
                     }
                 }
 
-                $discount = $request->discount_amount ?? 0;
-                $totalAmount = max(0, $subtotal - $discount);
+                $afterProductDiscount = $subtotal - $productDiscount;
 
-                // Generate Nomor Struk: INV-YYYYMMDD-RANDOM
+                // ========================
+                // STEP 2: Terapkan Promosi
+                // ========================
+                $promotionDiscount  = 0;
+                $freeItems          = []; // produk gratis dari buy_x_get_y
+                $appliedPromotions  = [];
+
+                $promotions = Promotion::with('items')
+                    ->where('store_id', $request->store_id)
+                    ->where('is_active', true)
+                    ->get();
+
+                foreach ($promotions as $promo) {
+                    if (!$promo->isActive()) continue;
+
+                    $applies = false;
+
+                    if ($promo->type === 'minimum_purchase') {
+                        $applies = $afterProductDiscount >= $promo->min_purchase;
+                    } elseif ($promo->type === 'bundle' || $promo->type === 'buy_x_get_y') {
+                        // Cek apakah semua item yang disyaratkan ada di cart
+                        $applies = true;
+                        foreach ($promo->items as $promoItem) {
+                            $cartQty = $cartProductMap[$promoItem->product_id] ?? 0;
+                            if ($cartQty < $promoItem->quantity) {
+                                $applies = false;
+                                break;
+                            }
+                        }
+                    }
+
+                    if ($applies) {
+                        $appliedPromotions[] = $promo->name;
+                        if ($promo->discount_type === 'percentage') {
+                            $promotionDiscount += $afterProductDiscount * ($promo->discount_value / 100);
+                        } elseif ($promo->discount_type === 'fixed') {
+                            $promotionDiscount += $promo->discount_value;
+                        } elseif ($promo->discount_type === 'free_product' && $promo->free_product_id) {
+                            $freeProduct = Product::find($promo->free_product_id);
+                            if ($freeProduct) {
+                                $freeItems[] = [
+                                    'product_id'   => $freeProduct->id,
+                                    'product_name' => $freeProduct->name . ' (GRATIS - ' . $promo->name . ')',
+                                    'price'        => 0,
+                                    'quantity'     => $promo->free_product_qty,
+                                    'subtotal'     => 0,
+                                ];
+                                // Kurangi stok produk gratis
+                                if ($freeProduct->stock !== null) {
+                                    $freeProduct->decrement('stock', $promo->free_product_qty);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ========================
+                // STEP 3: Terapkan Kupon
+                // ========================
+                $couponDiscount = 0;
+                $coupon = null;
+
+                if ($request->coupon_code) {
+                    $coupon = Coupon::where('code', $request->coupon_code)
+                        ->where('store_id', $request->store_id)
+                        ->first();
+
+                    if (!$coupon) {
+                        throw new \Exception("Kode kupon '{$request->coupon_code}' tidak ditemukan.");
+                    }
+
+                    if (!$coupon->isValid($afterProductDiscount - $promotionDiscount)) {
+                        throw new \Exception("Kupon tidak valid: mungkin sudah kedaluwarsa, sudah mencapai batas penggunaan, atau total belanja kurang dari minimum.");
+                    }
+
+                    $couponDiscount = $coupon->calculateDiscount($afterProductDiscount - $promotionDiscount);
+                    $coupon->increment('used_count');
+                }
+
+                // ========================
+                // STEP 4: Final Kalkulasi
+                // ========================
+                $totalDiscount = $productDiscount + $promotionDiscount + $couponDiscount;
+                $totalAmount   = max(0, $subtotal - $totalDiscount);
+
                 $receiptNumber = 'INV-' . date('Ymd') . '-' . strtoupper(Str::random(6));
 
                 $transaction = Transaction::create([
-                    'store_id' => $request->store_id,
-                    'user_id' => $request->user()->id,
-                    'shift_id' => $activeShift->id,
-                    'receipt_number' => $receiptNumber,
-                    'subtotal' => $subtotal,
-                    'discount_amount' => $discount,
-                    'total_amount' => $totalAmount,
-                    'payment_method' => $request->payment_method,
-                    'status' => 'completed',
+                    'store_id'        => $request->store_id,
+                    'user_id'         => $request->user()->id,
+                    'shift_id'        => $activeShift->id,
+                    'receipt_number'  => $receiptNumber,
+                    'subtotal'        => $subtotal,
+                    'discount_amount' => $totalDiscount,
+                    'total_amount'    => $totalAmount,
+                    'payment_method'  => $request->payment_method,
+                    'status'          => 'completed',
                 ]);
 
-                foreach ($transactionItems as $item) {
+                // Simpan item produk + produk gratis
+                foreach (array_merge($transactionItems, $freeItems) as $item) {
                     $transaction->items()->create($item);
                 }
 
                 return response()->json([
-                    'message' => 'Transaksi berhasil.',
+                    'message'            => 'Transaksi berhasil.',
+                    'applied_promotions' => $appliedPromotions,
+                    'discount_breakdown' => [
+                        'product_discount'   => $productDiscount,
+                        'promotion_discount' => $promotionDiscount,
+                        'coupon_discount'    => $couponDiscount,
+                        'total_discount'     => $totalDiscount,
+                    ],
                     'data' => $transaction->load('items')
                 ], 201);
             });
@@ -127,7 +238,7 @@ class TransactionController extends Controller
     }
 
     /**
-     * Display the specified transaction.
+     * Detail transaksi.
      */
     public function show(string $id)
     {
@@ -136,11 +247,11 @@ class TransactionController extends Controller
     }
 
     /**
-     * Cancel a transaction.
+     * Batalkan transaksi dan kembalikan stok.
      */
     public function destroy(string $id)
     {
-        $transaction = Transaction::findOrFail($id);
+        $transaction = Transaction::with('items')->findOrFail($id);
 
         if ($transaction->status === 'cancelled') {
             return response()->json(['message' => 'Transaksi sudah dibatalkan.'], 400);
@@ -148,16 +259,14 @@ class TransactionController extends Controller
 
         try {
             DB::transaction(function () use ($transaction) {
-                // Kembalikan stok
                 foreach ($transaction->items as $item) {
-                    if ($item->product_id) {
+                    if ($item->product_id && $item->price > 0) { // Skip produk gratis
                         $product = Product::find($item->product_id);
                         if ($product && $product->stock !== null) {
                             $product->increment('stock', $item->quantity);
                         }
                     }
                 }
-
                 $transaction->update(['status' => 'cancelled']);
             });
 

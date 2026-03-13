@@ -45,6 +45,13 @@ Route::middleware('auth:sanctum')->group(function () {
     // Transaction routes
     Route::apiResource('transactions', \App\Http\Controllers\Api\TransactionController::class);
 
+    // Coupon routes
+    Route::post('/coupons/check', [\App\Http\Controllers\Api\CouponController::class, 'check']);
+    Route::apiResource('coupons', \App\Http\Controllers\Api\CouponController::class);
+
+    // Promotion routes (bundle, minimum_purchase, buy_x_get_y)
+    Route::apiResource('promotions', \App\Http\Controllers\Api\PromotionController::class);
+
     // License key routes
     Route::post('/license-keys/activate', [LicenseKeyController::class, 'activate']);
     Route::apiResource('license-keys', LicenseKeyController::class);
