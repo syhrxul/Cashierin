@@ -14,6 +14,17 @@ use App\Http\Controllers\Api\ProductController;
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
+// Super Admin Routes
+Route::middleware(['auth:sanctum', 'superadmin'])->prefix('superadmin')->group(function () {
+    Route::get('/users', [\App\Http\Controllers\Api\SuperAdminController::class, 'listUsers']);
+    Route::post('/users', [\App\Http\Controllers\Api\SuperAdminController::class, 'createUser']);
+    Route::put('/users/{id}', [\App\Http\Controllers\Api\SuperAdminController::class, 'updateUser']);
+    Route::delete('/users/{id}', [\App\Http\Controllers\Api\SuperAdminController::class, 'deleteUser']);
+    Route::post('/users/{id}/change-password', [\App\Http\Controllers\Api\SuperAdminController::class, 'changePassword']);
+    Route::post('/users/{id}/toggle-status', [\App\Http\Controllers\Api\SuperAdminController::class, 'toggleUserStatus']);
+    Route::post('/license-keys', [LicenseKeyController::class, 'store']);
+});
+
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', function (Request $request) {
         return $request->user();
@@ -52,7 +63,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Promotion routes (bundle, minimum_purchase, buy_x_get_y)
     Route::apiResource('promotions', \App\Http\Controllers\Api\PromotionController::class);
 
-    // License key routes
+    // License key routes (activate, view, delete = semua user terautentikasi)
     Route::post('/license-keys/activate', [LicenseKeyController::class, 'activate']);
-    Route::apiResource('license-keys', LicenseKeyController::class);
+    Route::apiResource('license-keys', LicenseKeyController::class)->except(['store']);
 });
