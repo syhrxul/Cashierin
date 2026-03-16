@@ -75,9 +75,15 @@ class PromotionController extends Controller
     /**
      * Detail promosi.
      */
-    public function show(string $id)
+    public function show(Request $request, string $id)
     {
         $promotion = Promotion::with('items.product', 'freeProduct')->findOrFail($id);
+
+        // Cek kepemilikan toko
+        if ($request->has('store_id') && (int) $promotion->store_id !== (int) $request->store_id) {
+            return response()->json(['message' => 'Anda tidak memiliki akses ke data ini.'], 403);
+        }
+
         return response()->json(['data' => $promotion]);
     }
 
@@ -87,6 +93,11 @@ class PromotionController extends Controller
     public function update(Request $request, string $id)
     {
         $promotion = Promotion::findOrFail($id);
+
+        // Cek kepemilikan toko
+        if ($request->has('store_id') && (int) $promotion->store_id !== (int) $request->store_id) {
+            return response()->json(['message' => 'Anda tidak memiliki akses ke data ini.'], 403);
+        }
 
         $request->validate([
             'name'             => 'sometimes|string|max:255',
@@ -106,7 +117,7 @@ class PromotionController extends Controller
             'items.*.quantity'   => 'required_with:items|integer|min:1',
         ]);
 
-        $promotion->update($request->except('items'));
+        $promotion->update($request->except(['items', 'store_id']));
 
         // Jika items dikirim, replace semua item promosi
         if ($request->has('items')) {
@@ -125,9 +136,16 @@ class PromotionController extends Controller
     /**
      * Hapus promosi.
      */
-    public function destroy(string $id)
+    public function destroy(Request $request, string $id)
     {
-        Promotion::findOrFail($id)->delete();
+        $promotion = Promotion::findOrFail($id);
+
+        // Cek kepemilikan toko
+        if ($request->has('store_id') && (int) $promotion->store_id !== (int) $request->store_id) {
+            return response()->json(['message' => 'Anda tidak memiliki akses ke data ini.'], 403);
+        }
+
+        $promotion->delete();
         return response()->json(['message' => 'Promosi berhasil dihapus.']);
     }
 }

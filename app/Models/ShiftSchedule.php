@@ -3,27 +3,26 @@
 namespace App\Models;
 
 use App\Models\Traits\BelongsToStore;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Shift extends Model
+class ShiftSchedule extends Model
 {
-    use BelongsToStore;
+    use HasFactory, BelongsToStore;
 
     protected $fillable = [
         'store_id',
         'user_id',
-        'starting_cash',
-        'ending_cash',
-        'expected_cash',
-        'started_at',
-        'ended_at',
-        'status',
+        'start_time',
+        'end_time',
         'notes',
+        'status',
+        'created_by',
     ];
 
     protected $casts = [
-        'started_at' => 'datetime',
-        'ended_at' => 'datetime',
+        'start_time' => 'datetime',
+        'end_time' => 'datetime',
     ];
 
     public function store()
@@ -34,5 +33,10 @@ class Shift extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 }

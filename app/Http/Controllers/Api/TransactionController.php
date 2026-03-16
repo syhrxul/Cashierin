@@ -61,13 +61,15 @@ class TransactionController extends Controller
                 $subtotal        = 0;
                 $productDiscount = 0;
                 $transactionItems = [];
-                $cartProductMap   = []; // [product_id => qty] untuk cek promosi
+                $cartProductMap   = []; 
 
-                // ========================
-                // STEP 1: Hitung item
-                // ========================
                 foreach ($request->items as $itemData) {
                     $product = Product::lockForUpdate()->findOrFail($itemData['product_id']);
+
+                    // Pastikan produk milik toko yang sama
+                    if ((int) $product->store_id !== (int) $request->store_id) {
+                        throw new \Exception("Produk '{$product->name}' bukan milik toko ini.");
+                    }
 
                     if ($product->stock !== null && $product->stock < $itemData['quantity']) {
                         throw new \Exception("Stok produk '{$product->name}' tidak mencukupi. Sisa: {$product->stock}");
@@ -240,18 +242,29 @@ class TransactionController extends Controller
     /**
      * Detail transaksi.
      */
-    public function show(string $id)
+    public function show(Request $request, string $id)
     {
         $transaction = Transaction::with(['user', 'items.product', 'store', 'shift'])->findOrFail($id);
+
+        // Cek kepemilikan toko
+        if ($request->has('store_id') && (int) $transaction->store_id !== (int) $request->store_id) {
+            return response()->json(['message' => 'Anda tidak memiliki akses ke data ini.'], 403);
+        }
+
         return response()->json(['data' => $transaction]);
     }
 
     /**
      * Batalkan transaksi dan kembalikan stok.
      */
-    public function destroy(string $id)
+    public function destroy(Request $request, string $id)
     {
         $transaction = Transaction::with('items')->findOrFail($id);
+
+        // Cek kepemilikan toko
+        if ($request->has('store_id') && (int) $transaction->store_id !== (int) $request->store_id) {
+            return response()->json(['message' => 'Anda tidak memiliki akses ke data ini.'], 403);
+        }
 
         if ($transaction->status === 'cancelled') {
             return response()->json(['message' => 'Transaksi sudah dibatalkan.'], 400);

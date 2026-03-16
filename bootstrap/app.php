@@ -14,6 +14,9 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'superadmin' => \App\Http\Middleware\EnsureSuperAdmin::class,
+            'store.access' => \App\Http\Middleware\EnsureStoreAccess::class,
+            'approved' => \App\Http\Middleware\EnsureApproved::class,
+            'store.license' => \App\Http\Middleware\EnsureStoreLicense::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 class CouponController extends Controller
 {
     /**
-     * List semua kupon (bisa filter per toko).
+     * List semua kupon (otomatis filtered per toko oleh middleware).
      */
     public function index(Request $request)
     {
@@ -49,7 +49,9 @@ class CouponController extends Controller
             return response()->json(['message' => 'Nilai persentase tidak boleh melebihi 100.'], 422);
         }
 
-        $coupon = Coupon::create($request->all());
+        $coupon = Coupon::create($request->only([
+            'store_id', 'code', 'name', 'type', 'value', 'min_purchase', 'max_uses', 'is_active', 'starts_at', 'expires_at'
+        ]));
 
         return response()->json([
             'message' => 'Kupon berhasil dibuat.',
@@ -60,9 +62,15 @@ class CouponController extends Controller
     /**
      * Detail kupon.
      */
-    public function show(string $id)
+    public function show(Request $request, string $id)
     {
         $coupon = Coupon::findOrFail($id);
+
+        // Cek kepemilikan toko
+        if ($request->has('store_id') && (int) $coupon->store_id !== (int) $request->store_id) {
+            return response()->json(['message' => 'Anda tidak memiliki akses ke data ini.'], 403);
+        }
+
         return response()->json(['data' => $coupon]);
     }
 
@@ -72,6 +80,11 @@ class CouponController extends Controller
     public function update(Request $request, string $id)
     {
         $coupon = Coupon::findOrFail($id);
+
+        // Cek kepemilikan toko
+        if ($request->has('store_id') && (int) $coupon->store_id !== (int) $request->store_id) {
+            return response()->json(['message' => 'Anda tidak memiliki akses ke data ini.'], 403);
+        }
 
         $request->validate([
             'code'         => 'sometimes|string|unique:coupons,code,' . $coupon->id . '|max:50',
@@ -85,7 +98,7 @@ class CouponController extends Controller
             'expires_at'   => 'nullable|date',
         ]);
 
-        $coupon->update($request->all());
+        $coupon->update($request->except(['store_id']));
 
         return response()->json([
             'message' => 'Kupon berhasil diperbarui.',
@@ -96,9 +109,16 @@ class CouponController extends Controller
     /**
      * Hapus kupon.
      */
-    public function destroy(string $id)
+    public function destroy(Request $request, string $id)
     {
-        Coupon::findOrFail($id)->delete();
+        $coupon = Coupon::findOrFail($id);
+
+        // Cek kepemilikan toko
+        if ($request->has('store_id') && (int) $coupon->store_id !== (int) $request->store_id) {
+            return response()->json(['message' => 'Anda tidak memiliki akses ke data ini.'], 403);
+        }
+
+        $coupon->delete();
         return response()->json(['message' => 'Kupon berhasil dihapus.']);
     }
 
@@ -112,7 +132,14 @@ class CouponController extends Controller
             'cart_total'  => 'required|numeric|min:0',
         ]);
 
-        $coupon = Coupon::where('code', $request->code)->first();
+        $query = Coupon::where('code', $request->code);
+
+        // Filter per toko jika store_id ada
+        if ($request->has('store_id')) {
+            $query->where('store_id', $request->store_id);
+        }
+
+        $coupon = $query->first();
 
         if (!$coupon) {
             return response()->json(['message' => 'Kode kupon tidak ditemukan.'], 404);

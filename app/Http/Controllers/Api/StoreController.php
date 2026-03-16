@@ -9,88 +9,179 @@ use Illuminate\Http\Request;
 class StoreController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Lihat toko sendiri (user hanya bisa lihat toko mereka).
      */
     public function index(Request $request)
     {
-        $query = Store::query();
+        $user = $request->user();
 
-        // Optional filtering by owner (user_id)
-        if ($request->has('user_id')) {
-            $query->where('user_id', $request->user_id);
+        // Superadmin bisa lihat semua toko
+        if ($user->role === 'superadmin') {
+            $query = Store::query();
+            if ($request->has('user_id')) {
+                $query->where('user_id', $request->user_id);
+            }
+            return response()->json(['data' => $query->get()]);
         }
 
-        return response()->json([
-            'data' => $query->get()
-        ]);
+        // User biasa hanya bisa lihat toko mereka
+        $store = Store::where('id', $user->store_id)->get();
+        return response()->json(['data' => $store]);
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Buat toko baru — hanya superadmin (di route superadmin).
      */
     public function store(Request $request)
     {
+        $user = $request->user();
+
+        if (!in_array($user->role, ['superadmin', 'owner'])) {
+            return response()->json([
+                'message' => 'Hanya superadmin atau owner yang dapat membuat toko baru.'
+            ], 403);
+        }
+
         $request->validate([
             'user_id' => 'required|exists:users,id',
             'name' => 'required|string|max:255',
-            'address' => 'nullable|string',
-            'business_hours' => 'nullable|string',
-            'business_category' => 'nullable|string',
+            'address' => 'nullable|string|max:500',
+            'business_hours' => 'nullable|string|max:255',
+            'business_category' => 'nullable|string|max:255',
         ]);
 
-        $store = Store::create($request->all());
+        $store = Store::create($request->only([
+            'user_id', 'name', 'address', 'business_hours', 'business_category'
+        ]));
+
+        // Auto-assign store_id ke owner jika belum punya
+        $owner = \App\Models\User::find($request->user_id);
+        if ($owner && !$owner->store_id) {
+            $owner->update(['store_id' => $store->id]);
+        }
 
         return response()->json([
-            'message' => 'Store created successfully',
+            'message' => 'Toko berhasil dibuat.',
             'data' => $store
         ], 201);
     }
 
     /**
-     * Display the specified resource.
+     * Lihat detail toko (hanya toko sendiri).
      */
-    public function show(string $id)
+    public function show(Request $request, string $id)
     {
+        $user = $request->user();
         $store = Store::findOrFail($id);
 
-        return response()->json([
-            'data' => $store
-        ]);
+        // Non-superadmin hanya bisa lihat toko sendiri
+        if ($user->role !== 'superadmin' && (int) $store->id !== (int) $user->store_id) {
+            return response()->json(['message' => 'Anda tidak memiliki akses ke toko ini.'], 403);
+        }
+
+        return response()->json(['data' => $store]);
     }
 
     /**
-     * Update the specified resource in storage.
+     * Update toko — hanya owner dan manager.
      */
     public function update(Request $request, string $id)
     {
         $store = Store::findOrFail($id);
+        $user = $request->user();
+
+        // Non-superadmin hanya bisa edit toko sendiri
+        if ($user->role !== 'superadmin') {
+            if (!$user->store_id || (int) $store->id !== (int) $user->store_id) {
+                return response()->json(['message' => 'Anda tidak memiliki akses ke toko ini.'], 403);
+            }
+            if (!in_array($user->role, ['owner', 'manager'])) {
+                return response()->json([
+                    'message' => 'Hanya owner atau manager yang dapat mengubah data toko.'
+                ], 403);
+            }
+        }
 
         $request->validate([
-            'user_id' => 'sometimes|exists:users,id',
             'name' => 'sometimes|string|max:255',
-            'address' => 'nullable|string',
-            'business_hours' => 'nullable|string',
-            'business_category' => 'nullable|string',
+            'address' => 'nullable|string|max:500',
+            'business_hours' => 'nullable|string|max:255',
+            'business_category' => 'nullable|string|max:255',
         ]);
 
-        $store->update($request->all());
+        $data = $request->only(['name', 'address', 'business_hours', 'business_category']);
+        if ($user->role === 'superadmin' && $request->has('user_id')) {
+            $data['user_id'] = $request->user_id;
+        }
+
+        $store->update($data);
 
         return response()->json([
-            'message' => 'Store updated successfully',
+            'message' => 'Toko berhasil diperbarui.',
             'data' => $store
         ]);
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Hapus toko — hanya superadmin.
      */
-    public function destroy(string $id)
+    public function destroy(Request $request, string $id)
     {
+        $user = $request->user();
+
+        if ($user->role !== 'superadmin') {
+            return response()->json([
+                'message' => 'Hanya superadmin yang dapat menghapus toko.'
+            ], 403);
+        }
+
         $store = Store::findOrFail($id);
         $store->delete();
 
+        return response()->json(['message' => 'Toko berhasil dihapus.']);
+    }
+
+    /**
+     * Lihat invite code toko — hanya owner/manager.
+     */
+    public function inviteCode(Request $request)
+    {
+        $user = $request->user();
+
+        if (!in_array($user->role, ['superadmin', 'owner', 'manager'])) {
+            return response()->json([
+                'message' => 'Hanya owner atau manager yang dapat melihat kode undangan.'
+            ], 403);
+        }
+
+        $store = Store::findOrFail($user->store_id);
+
         return response()->json([
-            'message' => 'Store deleted successfully'
+            'invite_code' => $store->invite_code,
+            'invite_url' => url('/api/register/invite'), // Frontend akan pakai ini
+            'store_name' => $store->name,
+        ]);
+    }
+
+    /**
+     * Regenerate invite code — hanya owner.
+     */
+    public function regenerateInviteCode(Request $request)
+    {
+        $user = $request->user();
+
+        if (!in_array($user->role, ['superadmin', 'owner'])) {
+            return response()->json([
+                'message' => 'Hanya owner yang dapat me-reset kode undangan.'
+            ], 403);
+        }
+
+        $store = Store::findOrFail($user->store_id);
+        $newCode = $store->regenerateInviteCode();
+
+        return response()->json([
+            'message' => 'Kode undangan berhasil di-reset.',
+            'invite_code' => $newCode,
         ]);
     }
 }

@@ -3,16 +3,19 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\LicenseKey;
+use App\Models\Store;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class LicenseKeyController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Display a listing of license keys.
      */
     public function index(Request $request)
     {
-        $query = \App\Models\LicenseKey::query();
+        $query = LicenseKey::query();
 
         if ($request->has('type')) {
             $query->where('type', $request->type);
@@ -28,22 +31,22 @@ class LicenseKeyController extends Controller
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Generate license key baru (hanya superadmin).
      */
     public function store(Request $request)
     {
         $request->validate([
             'type' => 'required|in:trial,full',
             'duration_days' => 'required|integer|min:1',
-            'count' => 'nullable|integer|min:1|max:100', // How many to generate at once
+            'count' => 'nullable|integer|min:1|max:100',
         ]);
 
         $count = $request->input('count', 1);
         $keys = [];
 
         for ($i = 0; $i < $count; $i++) {
-            $keys[] = \App\Models\LicenseKey::create([
-                'key' => strtoupper(\Illuminate\Support\Str::random(16)), // Generate a 16-char string e.g., ABCD1234EFGH5678
+            $keys[] = LicenseKey::create([
+                'key' => strtoupper(Str::random(16)),
                 'type' => $request->type,
                 'duration_days' => $request->duration_days,
             ]);
@@ -56,23 +59,20 @@ class LicenseKeyController extends Controller
     }
 
     /**
-     * Display the specified resource.
+     * Display the specified license key.
      */
     public function show(string $id)
     {
-        $key = \App\Models\LicenseKey::findOrFail($id);
-
-        return response()->json([
-            'data' => $key
-        ]);
+        $key = LicenseKey::findOrFail($id);
+        return response()->json(['data' => $key]);
     }
 
     /**
-     * Update the specified resource in storage.
+     * Update license key.
      */
     public function update(Request $request, string $id)
     {
-        $key = \App\Models\LicenseKey::findOrFail($id);
+        $key = LicenseKey::findOrFail($id);
 
         $request->validate([
             'type' => 'sometimes|in:trial,full',
@@ -88,20 +88,23 @@ class LicenseKeyController extends Controller
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Delete license key.
      */
     public function destroy(string $id)
     {
-        $key = \App\Models\LicenseKey::findOrFail($id);
-        $key->delete();
-
-        return response()->json([
-            'message' => 'License key deleted successfully'
-        ]);
+        LicenseKey::findOrFail($id)->delete();
+        return response()->json(['message' => 'License key deleted successfully']);
     }
 
     /**
-     * Activate a license key for the authenticated user.
+     * Aktivasi license key untuk toko user.
+     * 
+     * Logika:
+     * - User harus punya store_id (owner dengan toko)
+     * - License key di-link ke toko
+     * - Toko otomatis jadi active
+     * - Jika toko sudah punya lisensi aktif, perpanjang dari tanggal expired yang lama
+     * - Trial hanya bisa dipakai sekali per toko
      */
     public function activate(Request $request)
     {
@@ -109,33 +112,112 @@ class LicenseKeyController extends Controller
             'key' => 'required|string',
         ]);
 
-        $key = \App\Models\LicenseKey::where('key', $request->key)->first();
+        $user = $request->user();
 
-        if (!$key) {
+        // User harus punya toko
+        if (!$user->store_id) {
+            return response()->json([
+                'message' => 'Anda belum memiliki toko. Hubungi admin untuk dibuatkan toko.'
+            ], 403);
+        }
+
+        $store = Store::findOrFail($user->store_id);
+
+        // Hanya owner yang bisa aktivasi license
+        if (!in_array($user->role, ['superadmin', 'owner'])) {
+            return response()->json([
+                'message' => 'Hanya owner toko yang dapat mengaktivasi license key.'
+            ], 403);
+        }
+
+        $licenseKey = LicenseKey::where('key', $request->key)->first();
+
+        if (!$licenseKey) {
             return response()->json([
                 'message' => 'License key tidak valid.'
             ], 404);
         }
 
-        if ($key->is_used) {
+        if ($licenseKey->is_used) {
             return response()->json([
                 'message' => 'License key sudah digunakan.'
             ], 400);
         }
 
-        $user = $request->user();
+        // Cek: trial hanya bisa dipakai sekali per toko
+        if ($licenseKey->type === 'trial') {
+            $existingTrial = LicenseKey::where('store_id', $store->id)
+                ->where('type', 'trial')
+                ->where('is_used', true)
+                ->exists();
 
-        // Update the key
-        $key->update([
+            if ($existingTrial) {
+                return response()->json([
+                    'message' => 'Toko ini sudah pernah menggunakan trial. Silakan gunakan license key full.'
+                ], 400);
+            }
+        }
+
+        // Hitung tanggal expired
+        // Jika toko sudah punya lisensi aktif, perpanjang dari tanggal expired lama
+        $startsFrom = now();
+        if ($store->license_expires_at && now()->lt($store->license_expires_at)) {
+            $startsFrom = $store->license_expires_at;
+        }
+        $expiresAt = $startsFrom->copy()->addDays($licenseKey->duration_days);
+
+        // Update license key
+        $licenseKey->update([
             'is_used' => true,
             'used_by' => $user->id,
             'used_at' => now(),
-            'expires_at' => now()->addDays($key->duration_days),
+            'expires_at' => $expiresAt,
+            'store_id' => $store->id,
         ]);
 
+        // Aktivasi toko
+        $store->activateLicense($licenseKey);
+
+        // Update expires_at toko ke yang baru dihitung
+        $store->update(['license_expires_at' => $expiresAt]);
+
         return response()->json([
-            'message' => 'License key berhasil diaktivasi.',
-            'data' => $key
+            'message' => 'License key berhasil diaktivasi. Toko Anda sekarang aktif!',
+            'data' => [
+                'license_key' => $licenseKey,
+                'store' => $store->fresh(),
+                'license_type' => $licenseKey->type,
+                'expires_at' => $expiresAt->toDateTimeString(),
+                'days_remaining' => $store->fresh()->licenseDaysRemaining(),
+            ]
+        ]);
+    }
+
+    /**
+     * Cek status lisensi toko.
+     */
+    public function storeStatus(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user->store_id) {
+            return response()->json(['message' => 'Anda belum memiliki toko.'], 404);
+        }
+
+        $store = Store::findOrFail($user->store_id);
+        $store->checkAndUpdateLicenseStatus();
+        $store->refresh();
+
+        return response()->json([
+            'store_name' => $store->name,
+            'status' => $store->status,
+            'license_type' => $store->license_type,
+            'license_expires_at' => $store->license_expires_at,
+            'days_remaining' => $store->licenseDaysRemaining(),
+            'grace_period_ends_at' => $store->grace_period_ends_at,
+            'grace_period_days_remaining' => $store->gracePeriodDaysRemaining(),
+            'is_active' => $store->isActive(),
+            'is_frozen' => $store->isFrozen(),
         ]);
     }
 }

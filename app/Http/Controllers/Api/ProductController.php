@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Product;
 use Illuminate\Http\Request;
 
 class ProductController extends Controller
@@ -12,7 +13,7 @@ class ProductController extends Controller
      */
     public function index(Request $request)
     {
-        $query = \App\Models\Product::with('category');
+        $query = Product::with('category');
 
         if ($request->has('store_id')) {
             $query->where('store_id', $request->store_id);
@@ -47,7 +48,9 @@ class ProductController extends Controller
             'is_active' => 'nullable|boolean',
         ]);
 
-        $product = \App\Models\Product::create($request->all());
+        $product = Product::create($request->only([
+            'store_id', 'category_id', 'name', 'description', 'price', 'stock', 'sku', 'is_active'
+        ]));
 
         return response()->json([
             'message' => 'Product created successfully',
@@ -58,9 +61,14 @@ class ProductController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show(Request $request, string $id)
     {
-        $product = \App\Models\Product::with('category')->findOrFail($id);
+        $product = Product::with('category')->findOrFail($id);
+
+        // Cek kepemilikan toko
+        if ($request->has('store_id') && (int) $product->store_id !== (int) $request->store_id) {
+            return response()->json(['message' => 'Anda tidak memiliki akses ke data ini.'], 403);
+        }
 
         return response()->json([
             'data' => $product
@@ -72,10 +80,14 @@ class ProductController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        $product = \App\Models\Product::findOrFail($id);
+        $product = Product::findOrFail($id);
+
+        // Cek kepemilikan toko
+        if ($request->has('store_id') && (int) $product->store_id !== (int) $request->store_id) {
+            return response()->json(['message' => 'Anda tidak memiliki akses ke data ini.'], 403);
+        }
 
         $request->validate([
-            'store_id' => 'sometimes|exists:stores,id',
             'category_id' => 'nullable|exists:categories,id',
             'name' => 'sometimes|string|max:255',
             'description' => 'nullable|string',
@@ -85,7 +97,7 @@ class ProductController extends Controller
             'is_active' => 'nullable|boolean',
         ]);
 
-        $product->update($request->all());
+        $product->update($request->except(['store_id']));
 
         return response()->json([
             'message' => 'Product updated successfully',
@@ -96,9 +108,15 @@ class ProductController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy(Request $request, string $id)
     {
-        $product = \App\Models\Product::findOrFail($id);
+        $product = Product::findOrFail($id);
+
+        // Cek kepemilikan toko
+        if ($request->has('store_id') && (int) $product->store_id !== (int) $request->store_id) {
+            return response()->json(['message' => 'Anda tidak memiliki akses ke data ini.'], 403);
+        }
+
         $product->delete();
 
         return response()->json([

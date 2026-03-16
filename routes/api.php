@@ -4,38 +4,73 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\Api\AuthController;
-
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\LicenseKeyController;
 use App\Http\Controllers\Api\StoreController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ProductController;
 
+// =============================================
+// PUBLIC ROUTES (tanpa auth)
+// =============================================
 Route::post('/register', [AuthController::class, 'register']);
+Route::post('/register/invite', [AuthController::class, 'registerByInvite']);
 Route::post('/login', [AuthController::class, 'login']);
 
-// Super Admin Routes
-Route::middleware(['auth:sanctum', 'superadmin'])->prefix('superadmin')->group(function () {
-    Route::get('/users', [\App\Http\Controllers\Api\SuperAdminController::class, 'listUsers']);
-    Route::post('/users', [\App\Http\Controllers\Api\SuperAdminController::class, 'createUser']);
-    Route::put('/users/{id}', [\App\Http\Controllers\Api\SuperAdminController::class, 'updateUser']);
-    Route::delete('/users/{id}', [\App\Http\Controllers\Api\SuperAdminController::class, 'deleteUser']);
-    Route::post('/users/{id}/change-password', [\App\Http\Controllers\Api\SuperAdminController::class, 'changePassword']);
-    Route::post('/users/{id}/toggle-status', [\App\Http\Controllers\Api\SuperAdminController::class, 'toggleUserStatus']);
-    Route::post('/license-keys', [LicenseKeyController::class, 'store']);
-});
-
+// =============================================
+// AUTHENTICATED (minimal) — user pending/frozen bisa akses
+// =============================================
 Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/approval-status', [AuthController::class, 'approvalStatus']);
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
-    Route::post('/logout', [AuthController::class, 'logout']);
 
-    // User management routes
-    Route::apiResource('users', UserController::class);
+    // License key routes — bisa diakses walaupun toko frozen/inactive
+    // (supaya user bisa aktivasi/perpanjang lisensi)
+    Route::post('/license-keys/activate', [LicenseKeyController::class, 'activate']);
+    Route::get('/license-keys/store-status', [LicenseKeyController::class, 'storeStatus']);
+});
 
-    // Store management routes
+// =============================================
+// SUPER ADMIN ROUTES — hanya superadmin
+// =============================================
+Route::middleware(['auth:sanctum', 'superadmin'])->prefix('superadmin')->group(function () {
+    // User management
+    Route::get('/users', [\App\Http\Controllers\Api\SuperAdminController::class, 'listUsers']);
+    Route::get('/users/pending', [\App\Http\Controllers\Api\SuperAdminController::class, 'pendingUsers']);
+    Route::post('/users', [\App\Http\Controllers\Api\SuperAdminController::class, 'createUser']);
+    Route::put('/users/{id}', [\App\Http\Controllers\Api\SuperAdminController::class, 'updateUser']);
+    Route::delete('/users/{id}', [\App\Http\Controllers\Api\SuperAdminController::class, 'deleteUser']);
+    Route::post('/users/{id}/approve', [\App\Http\Controllers\Api\SuperAdminController::class, 'approveUser']);
+    Route::post('/users/{id}/reject', [\App\Http\Controllers\Api\SuperAdminController::class, 'rejectUser']);
+    Route::post('/users/{id}/change-password', [\App\Http\Controllers\Api\SuperAdminController::class, 'changePassword']);
+    Route::post('/users/{id}/toggle-status', [\App\Http\Controllers\Api\SuperAdminController::class, 'toggleUserStatus']);
+
+    // License keys
+    Route::post('/license-keys', [LicenseKeyController::class, 'store']);
+    Route::apiResource('license-keys', LicenseKeyController::class)->except(['store']);
+
+    // Store management (CRUD tanpa batasan)
     Route::apiResource('stores', StoreController::class);
+});
+
+// =============================================
+// STORE-SCOPED ROUTES — approved + toko sendiri + lisensi aktif
+// =============================================
+Route::middleware(['auth:sanctum', 'store.access', 'store.license'])->group(function () {
+    // Store management
+    Route::get('/store/invite-code', [StoreController::class, 'inviteCode']);
+    Route::post('/store/regenerate-invite-code', [StoreController::class, 'regenerateInviteCode']);
+    Route::apiResource('stores', StoreController::class);
+
+    // User management (per toko)
+    Route::get('/users/pending-approvals', [UserController::class, 'pendingApprovals']);
+    Route::post('/users/{id}/approve', [UserController::class, 'approveUser']);
+    Route::post('/users/{id}/reject', [UserController::class, 'rejectUser']);
+    Route::post('/users/{id}/change-password', [UserController::class, 'changePassword']);
+    Route::apiResource('users', UserController::class);
 
     // Category routes
     Route::apiResource('categories', CategoryController::class);
@@ -48,7 +83,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/shifts/{id}/close', [\App\Http\Controllers\Api\ShiftController::class, 'close']);
     Route::apiResource('shifts', \App\Http\Controllers\Api\ShiftController::class);
 
-    // Shift Request routes 
+    // Shift Schedule routes
+    Route::apiResource('shift-schedules', \App\Http\Controllers\Api\ShiftScheduleController::class);
+
+    // Shift Request routes
     Route::post('/shift-requests/{id}/approve', [\App\Http\Controllers\Api\ShiftRequestController::class, 'approve']);
     Route::post('/shift-requests/{id}/reject', [\App\Http\Controllers\Api\ShiftRequestController::class, 'reject']);
     Route::apiResource('shift-requests', \App\Http\Controllers\Api\ShiftRequestController::class);
@@ -60,10 +98,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/coupons/check', [\App\Http\Controllers\Api\CouponController::class, 'check']);
     Route::apiResource('coupons', \App\Http\Controllers\Api\CouponController::class);
 
-    // Promotion routes (bundle, minimum_purchase, buy_x_get_y)
+    // Promotion routes
     Route::apiResource('promotions', \App\Http\Controllers\Api\PromotionController::class);
-
-    // License key routes (activate, view, delete = semua user terautentikasi)
-    Route::post('/license-keys/activate', [LicenseKeyController::class, 'activate']);
-    Route::apiResource('license-keys', LicenseKeyController::class)->except(['store']);
 });

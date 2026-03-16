@@ -19,6 +19,7 @@
         "livewire/livewire": "^4.0"
     },
     "require-dev": {
+        "beyondcode/laravel-er-diagram-generator": "*",
         "dedoc/scramble": "*",
         "fakerphp/faker": "^1.23",
         "laravel/boost": "^2.0",

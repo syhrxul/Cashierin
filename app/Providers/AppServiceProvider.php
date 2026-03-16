@@ -24,6 +24,10 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+
+        \Illuminate\Support\Facades\Gate::define('viewApiDocs', function (?\App\Models\User $user) {
+            return app()->isLocal() || $user?->role === 'superadmin';
+        });
     }
 
     /**

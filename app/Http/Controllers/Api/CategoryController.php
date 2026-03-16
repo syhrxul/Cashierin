@@ -3,17 +3,20 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Category;
 use Illuminate\Http\Request;
 
 class CategoryController extends Controller
 {
     /**
      * Display a listing of the resource.
+     * store_id sudah di-inject oleh middleware store.access
      */
     public function index(Request $request)
     {
-        $query = \App\Models\Category::query();
+        $query = Category::query();
 
+        // store_id otomatis ada dari middleware (kecuali superadmin tanpa store_id)
         if ($request->has('store_id')) {
             $query->where('store_id', $request->store_id);
         }
@@ -33,7 +36,7 @@ class CategoryController extends Controller
             'name' => 'required|string|max:255',
         ]);
 
-        $category = \App\Models\Category::create($request->all());
+        $category = Category::create($request->only(['store_id', 'name']));
 
         return response()->json([
             'message' => 'Category created successfully',
@@ -44,9 +47,14 @@ class CategoryController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show(Request $request, string $id)
     {
-        $category = \App\Models\Category::findOrFail($id);
+        $category = Category::findOrFail($id);
+
+        // Cek kepemilikan toko
+        if ($request->has('store_id') && (int) $category->store_id !== (int) $request->store_id) {
+            return response()->json(['message' => 'Anda tidak memiliki akses ke data ini.'], 403);
+        }
 
         return response()->json([
             'data' => $category
@@ -58,14 +66,18 @@ class CategoryController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        $category = \App\Models\Category::findOrFail($id);
+        $category = Category::findOrFail($id);
+
+        // Cek kepemilikan toko
+        if ($request->has('store_id') && (int) $category->store_id !== (int) $request->store_id) {
+            return response()->json(['message' => 'Anda tidak memiliki akses ke data ini.'], 403);
+        }
 
         $request->validate([
-            'store_id' => 'sometimes|exists:stores,id',
             'name' => 'sometimes|string|max:255',
         ]);
 
-        $category->update($request->all());
+        $category->update($request->only(['name']));
 
         return response()->json([
             'message' => 'Category updated successfully',
@@ -76,9 +88,15 @@ class CategoryController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy(Request $request, string $id)
     {
-        $category = \App\Models\Category::findOrFail($id);
+        $category = Category::findOrFail($id);
+
+        // Cek kepemilikan toko
+        if ($request->has('store_id') && (int) $category->store_id !== (int) $request->store_id) {
+            return response()->json(['message' => 'Anda tidak memiliki akses ke data ini.'], 403);
+        }
+
         $category->delete();
 
         return response()->json([

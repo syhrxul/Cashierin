@@ -25,10 +25,16 @@ class SuperAdminController extends Controller
             $query->where('store_id', $request->store_id);
         }
 
+        if ($request->has('approval_status')) {
+            $query->where('approval_status', $request->approval_status);
+        }
+
         if ($request->has('search')) {
-            $query->where(function ($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->search . '%')
-                  ->orWhere('email', 'like', '%' . $request->search . '%');
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                  ->orWhere('username', 'like', '%' . $search . '%')
+                  ->orWhere('email', 'like', '%' . $search . '%');
             });
         }
 
@@ -36,12 +42,81 @@ class SuperAdminController extends Controller
     }
 
     /**
-     * Buat user baru (semua role bisa, termasuk superadmin lain).
+     * Daftar user yang menunggu approval (pending owners).
+     */
+    public function pendingUsers(Request $request)
+    {
+        $query = User::where('approval_status', 'pending')
+            ->whereNull('store_id'); // Owner baru yang belum punya toko
+
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                  ->orWhere('username', 'like', '%' . $search . '%')
+                  ->orWhere('email', 'like', '%' . $search . '%');
+            });
+        }
+
+        return response()->json(['data' => $query->latest()->get()]);
+    }
+
+    /**
+     * Approve user (owner baru yang daftar via /register).
+     */
+    public function approveUser(Request $request, string $id)
+    {
+        $user = User::findOrFail($id);
+
+        if ($user->approval_status === 'approved') {
+            return response()->json(['message' => 'User sudah disetujui sebelumnya.'], 400);
+        }
+
+        $user->update([
+            'approval_status' => 'approved',
+            'approved_by' => $request->user()->id,
+            'approved_at' => now(),
+        ]);
+
+        return response()->json([
+            'message' => "User '{$user->name}' berhasil disetujui.",
+            'data' => $user->fresh()
+        ]);
+    }
+
+    /**
+     * Reject user.
+     */
+    public function rejectUser(Request $request, string $id)
+    {
+        $user = User::findOrFail($id);
+
+        if ($user->approval_status === 'rejected') {
+            return response()->json(['message' => 'User sudah ditolak sebelumnya.'], 400);
+        }
+
+        $user->update([
+            'approval_status' => 'rejected',
+            'approved_by' => $request->user()->id,
+            'approved_at' => now(),
+        ]);
+
+        $user->tokens()->delete();
+
+        return response()->json([
+            'message' => "Pendaftaran user '{$user->name}' ditolak.",
+            'data' => $user->fresh()
+        ]);
+    }
+
+    /**
+     * Buat user baru secara manual.
      */
     public function createUser(Request $request)
     {
         $request->validate([
             'name'     => 'required|string|max:255',
+            'username' => 'required|string|max:50|unique:users,username|alpha_dash',
             'email'    => 'required|email|unique:users,email',
             'password' => ['required', Password::min(8)],
             'role'     => 'required|in:superadmin,owner,manager,kasir',
@@ -50,10 +125,14 @@ class SuperAdminController extends Controller
 
         $user = User::create([
             'name'     => $request->name,
+            'username' => strtolower($request->username),
             'email'    => $request->email,
             'password' => Hash::make($request->password),
             'role'     => $request->role,
             'store_id' => $request->store_id,
+            'approval_status' => 'approved',
+            'approved_by' => $request->user()->id,
+            'approved_at' => now(),
         ]);
 
         return response()->json([
@@ -63,7 +142,7 @@ class SuperAdminController extends Controller
     }
 
     /**
-     * Ubah password user manapun (tanpa perlu tahu password lama).
+     * Ganti password user.
      */
     public function changePassword(Request $request, string $id)
     {
@@ -78,7 +157,6 @@ class SuperAdminController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        // Revoke semua token aktif user ini agar harus login ulang
         $user->tokens()->delete();
 
         return response()->json([
@@ -87,7 +165,7 @@ class SuperAdminController extends Controller
     }
 
     /**
-     * Update data user (nama, email, role, store_id).
+     * Update data user.
      */
     public function updateUser(Request $request, string $id)
     {
@@ -95,12 +173,18 @@ class SuperAdminController extends Controller
 
         $request->validate([
             'name'     => 'sometimes|string|max:255',
+            'username' => 'sometimes|string|max:50|alpha_dash|unique:users,username,' . $user->id,
             'email'    => 'sometimes|email|unique:users,email,' . $user->id,
             'role'     => 'sometimes|in:superadmin,owner,manager,kasir',
             'store_id' => 'nullable|exists:stores,id',
         ]);
 
-        $user->update($request->only(['name', 'email', 'role', 'store_id']));
+        $data = $request->only(['name', 'username', 'email', 'role', 'store_id']);
+        if (isset($data['username'])) {
+            $data['username'] = strtolower($data['username']);
+        }
+
+        $user->update($data);
 
         return response()->json([
             'message' => 'Data user berhasil diperbarui.',
@@ -109,13 +193,12 @@ class SuperAdminController extends Controller
     }
 
     /**
-     * Hapus user beserta semua token aktifnya.
+     * Hapus user.
      */
     public function deleteUser(string $id)
     {
         $user = User::findOrFail($id);
 
-        // Cegah superadmin hapus diri sendiri
         if (request()->user()->id === $user->id) {
             return response()->json([
                 'message' => 'Anda tidak dapat menghapus akun Anda sendiri.'
@@ -129,8 +212,7 @@ class SuperAdminController extends Controller
     }
 
     /**
-     * Aktifkan / nonaktifkan user (lock akun).
-     * Menggunakan soft-approach: revoke semua token jika dinonaktifkan.
+     * Aktifkan / nonaktifkan user.
      */
     public function toggleUserStatus(Request $request, string $id)
     {
@@ -140,8 +222,6 @@ class SuperAdminController extends Controller
             'is_active' => 'required|boolean',
         ]);
 
-        // Tambahkan kolom is_active di masa depan jika diperlukan.
-        // Saat ini, nonaktifkan = cabut semua token.
         if (!$request->is_active) {
             $user->tokens()->delete();
             return response()->json([

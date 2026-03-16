@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -23,10 +22,14 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'username',
         'email',
         'password',
         'store_id',
         'role',
+        'approval_status',
+        'approved_by',
+        'approved_at',
     ];
 
     /**
@@ -51,6 +54,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'approved_at' => 'datetime',
         ];
     }
 
@@ -66,6 +70,22 @@ class User extends Authenticatable
             ->implode('');
     }
 
+    /**
+     * Cek apakah user sudah di-approve.
+     */
+    public function isApproved(): bool
+    {
+        return $this->approval_status === 'approved';
+    }
+
+    /**
+     * Cek apakah user masih pending approval.
+     */
+    public function isPending(): bool
+    {
+        return $this->approval_status === 'pending';
+    }
+
     public function store()
     {
         return $this->belongsTo(Store::class);
@@ -74,5 +94,10 @@ class User extends Authenticatable
     public function ownedStore()
     {
         return $this->hasOne(Store::class, 'user_id');
+    }
+
+    public function approvedByUser()
+    {
+        return $this->belongsTo(User::class, 'approved_by');
     }
 }

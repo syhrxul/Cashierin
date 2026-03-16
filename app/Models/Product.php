@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BelongsToStore;
 use Illuminate\Database\Eloquent\Model;
 
 class Product extends Model
 {
+    use BelongsToStore;
+
     protected $fillable = [
         'store_id',
         'category_id',
@@ -15,6 +18,16 @@ class Product extends Model
         'stock',
         'sku',
         'is_active',
+        'discount_type',
+        'discount_value',
+        'discount_starts_at',
+        'discount_ends_at',
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
+        'discount_starts_at' => 'datetime',
+        'discount_ends_at' => 'datetime',
     ];
 
     public function store()

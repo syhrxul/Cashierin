@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BelongsToStore;
 use Illuminate\Database\Eloquent\Model;
 
 class Category extends Model
 {
+    use BelongsToStore;
+
     protected $fillable = [
         'store_id',
         'name',

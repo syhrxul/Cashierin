@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\ShiftRequest;
 use Illuminate\Http\Request;
 
 class ShiftRequestController extends Controller
@@ -12,7 +13,7 @@ class ShiftRequestController extends Controller
      */
     public function index(Request $request)
     {
-        $query = \App\Models\ShiftRequest::with(['user', 'targetUser', 'shift', 'approver']);
+        $query = ShiftRequest::with(['user', 'targetUser', 'shift', 'approver']);
 
         if ($request->has('store_id')) {
             $query->where('store_id', $request->store_id);
@@ -40,7 +41,7 @@ class ShiftRequestController extends Controller
             'reason' => 'required|string',
         ]);
 
-        $shiftRequest = \App\Models\ShiftRequest::create([
+        $shiftRequest = ShiftRequest::create([
             'store_id' => $request->store_id,
             'user_id' => $request->user()->id,
             'type' => $request->type,
@@ -59,9 +60,15 @@ class ShiftRequestController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show(Request $request, string $id)
     {
-        $shiftRequest = \App\Models\ShiftRequest::with(['user', 'targetUser', 'shift', 'approver'])->findOrFail($id);
+        $shiftRequest = ShiftRequest::with(['user', 'targetUser', 'shift', 'approver'])->findOrFail($id);
+
+        // Cek kepemilikan toko
+        if ($request->has('store_id') && (int) $shiftRequest->store_id !== (int) $request->store_id) {
+            return response()->json(['message' => 'Anda tidak memiliki akses ke data ini.'], 403);
+        }
+
         return response()->json(['data' => $shiftRequest]);
     }
 
@@ -70,7 +77,12 @@ class ShiftRequestController extends Controller
      */
     public function approve(Request $request, string $id)
     {
-        $shiftRequest = \App\Models\ShiftRequest::findOrFail($id);
+        $shiftRequest = ShiftRequest::findOrFail($id);
+
+        // Cek kepemilikan toko
+        if ($request->has('store_id') && (int) $shiftRequest->store_id !== (int) $request->store_id) {
+            return response()->json(['message' => 'Anda tidak memiliki akses ke data ini.'], 403);
+        }
 
         if ($shiftRequest->status !== 'pending') {
             return response()->json(['message' => 'Permintaan ini sudah diproses.'], 400);
@@ -101,7 +113,12 @@ class ShiftRequestController extends Controller
      */
     public function reject(Request $request, string $id)
     {
-        $shiftRequest = \App\Models\ShiftRequest::findOrFail($id);
+        $shiftRequest = ShiftRequest::findOrFail($id);
+
+        // Cek kepemilikan toko
+        if ($request->has('store_id') && (int) $shiftRequest->store_id !== (int) $request->store_id) {
+            return response()->json(['message' => 'Anda tidak memiliki akses ke data ini.'], 403);
+        }
 
         if ($shiftRequest->status !== 'pending') {
             return response()->json(['message' => 'Permintaan ini sudah diproses.'], 400);
@@ -122,9 +139,15 @@ class ShiftRequestController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy(Request $request, string $id)
     {
-        $shiftRequest = \App\Models\ShiftRequest::findOrFail($id);
+        $shiftRequest = ShiftRequest::findOrFail($id);
+
+        // Cek kepemilikan toko
+        if ($request->has('store_id') && (int) $shiftRequest->store_id !== (int) $request->store_id) {
+            return response()->json(['message' => 'Anda tidak memiliki akses ke data ini.'], 403);
+        }
+
         $shiftRequest->delete();
 
         return response()->json(['message' => 'Permintaan shift dihapus.']);

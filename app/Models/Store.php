@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class Store extends Model
 {
@@ -12,7 +13,160 @@ class Store extends Model
         'address',
         'business_hours',
         'business_category',
+        'invite_code',
+        'status',
+        'license_type',
+        'license_expires_at',
+        'grace_period_ends_at',
     ];
+
+    protected $casts = [
+        'license_expires_at' => 'datetime',
+        'grace_period_ends_at' => 'datetime',
+    ];
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($store) {
+            if (empty($store->invite_code)) {
+                $store->invite_code = strtoupper(Str::random(12));
+            }
+        });
+    }
+
+    // ========================================
+    // LICENSE STATUS HELPERS
+    // ========================================
+
+    /**
+     * Cek apakah toko aktif (bisa digunakan).
+     */
+    public function isActive(): bool
+    {
+        return in_array($this->status, ['active', 'grace_period']);
+    }
+
+    /**
+     * Cek apakah toko dalam masa tenggang.
+     */
+    public function isInGracePeriod(): bool
+    {
+        return $this->status === 'grace_period';
+    }
+
+    /**
+     * Cek apakah toko dibekukan.
+     */
+    public function isFrozen(): bool
+    {
+        return $this->status === 'frozen';
+    }
+
+    /**
+     * Cek & update status lisensi toko.
+     * Dipanggil setiap kali user mengakses API.
+     */
+    public function checkAndUpdateLicenseStatus(): string
+    {
+        // Toko tanpa lisensi = inactive
+        if ($this->license_type === 'none') {
+            if ($this->status !== 'inactive') {
+                $this->update(['status' => 'inactive']);
+            }
+            return 'inactive';
+        }
+
+        // Lisensi belum expired
+        if ($this->license_expires_at && now()->lt($this->license_expires_at)) {
+            if ($this->status !== 'active') {
+                $this->update(['status' => 'active', 'grace_period_ends_at' => null]);
+            }
+            return 'active';
+        }
+
+        // === LISENSI SUDAH EXPIRED ===
+
+        if ($this->license_type === 'trial') {
+            // Trial expired → langsung frozen, tidak ada grace period
+            if ($this->status !== 'frozen') {
+                $this->update(['status' => 'frozen', 'grace_period_ends_at' => null]);
+            }
+            return 'frozen';
+        }
+
+        // Full license expired → 7 hari grace period
+        if ($this->license_type === 'full') {
+            // Set grace period jika belum di-set
+            if (!$this->grace_period_ends_at) {
+                $gracePeriodEnd = $this->license_expires_at->addDays(7);
+                $this->update([
+                    'status' => 'grace_period',
+                    'grace_period_ends_at' => $gracePeriodEnd,
+                ]);
+                return 'grace_period';
+            }
+
+            // Masih dalam grace period
+            if (now()->lt($this->grace_period_ends_at)) {
+                if ($this->status !== 'grace_period') {
+                    $this->update(['status' => 'grace_period']);
+                }
+                return 'grace_period';
+            }
+
+            // Grace period habis → frozen
+            if ($this->status !== 'frozen') {
+                $this->update(['status' => 'frozen']);
+            }
+            return 'frozen';
+        }
+
+        return $this->status;
+    }
+
+    /**
+     * Aktivasi lisensi untuk toko ini.
+     */
+    public function activateLicense(LicenseKey $licenseKey): void
+    {
+        $this->update([
+            'status' => 'active',
+            'license_type' => $licenseKey->type,
+            'license_expires_at' => $licenseKey->expires_at,
+            'grace_period_ends_at' => null,
+        ]);
+    }
+
+    /**
+     * Hitung sisa hari lisensi.
+     */
+    public function licenseDaysRemaining(): int
+    {
+        if (!$this->license_expires_at) return 0;
+        return max(0, (int) now()->diffInDays($this->license_expires_at, false));
+    }
+
+    /**
+     * Hitung sisa hari grace period.
+     */
+    public function gracePeriodDaysRemaining(): int
+    {
+        if (!$this->grace_period_ends_at) return 0;
+        return max(0, (int) now()->diffInDays($this->grace_period_ends_at, false));
+    }
+
+    // ========================================
+    // RELATIONSHIPS
+    // ========================================
+
+    public function regenerateInviteCode(): string
+    {
+        $this->invite_code = strtoupper(Str::random(12));
+        $this->save();
+        return $this->invite_code;
+    }
 
     public function owner()
     {
@@ -42,5 +196,10 @@ class Store extends Model
     public function transactions()
     {
         return $this->hasMany(Transaction::class);
+    }
+
+    public function licenseKeys()
+    {
+        return $this->hasMany(LicenseKey::class);
     }
 }
