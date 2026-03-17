@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BelongsToStore;
 use Illuminate\Database\Eloquent\Model;
 
 class LicenseKey extends Model
 {
+    use BelongsToStore;
     protected $fillable = [
         'key',
         'type',

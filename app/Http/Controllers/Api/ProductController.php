@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use App\Http\Resources\ProductResource;
 
 class ProductController extends Controller
 {
@@ -40,7 +41,7 @@ class ProductController extends Controller
         });
 
         return response()->json([
-            'data' => $products
+            'data' => ProductResource::collection($products)
         ]);
     }
 
@@ -72,7 +73,7 @@ class ProductController extends Controller
 
         return response()->json([
             'message' => 'Product created successfully',
-            'data' => $product->load('category')
+            'data' => new ProductResource($product->load('category'))
         ], 201);
     }
 
@@ -88,7 +89,7 @@ class ProductController extends Controller
         }
 
         return response()->json([
-            'data' => $product
+            'data' => new ProductResource($product)
         ]);
     }
 
@@ -119,7 +120,7 @@ class ProductController extends Controller
 
         return response()->json([
             'message' => 'Product updated successfully',
-            'data' => $product->load('category')
+            'data' => new ProductResource($product->load('category'))
         ]);
     }
 

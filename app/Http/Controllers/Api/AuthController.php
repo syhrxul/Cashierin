@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use App\Http\Resources\UserResource;
 
 class AuthController extends Controller
 {
@@ -37,7 +38,7 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Registrasi berhasil. Akun Anda perlu disetujui oleh Super Admin sebelum dapat digunakan.',
-            'user' => $user,
+            'user' => new UserResource($user),
             'token' => $token,
             'approval_status' => 'pending',
         ], 201);
@@ -76,7 +77,7 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => "Registrasi berhasil untuk toko '{$store->name}'. Akun Anda perlu disetujui oleh owner toko.",
-            'user' => $user,
+            'user' => new UserResource($user),
             'token' => $token,
             'approval_status' => 'pending',
             'store_name' => $store->name,
@@ -115,7 +116,7 @@ class AuthController extends Controller
         $token = $user->createToken('auth_token')->plainTextToken;
 
         $response = [
-            'user' => $user,
+            'user' => new UserResource($user),
             'token' => $token,
             'approval_status' => $user->approval_status,
         ];
