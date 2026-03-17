@@ -5,29 +5,33 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class CategoryController extends Controller
 {
     /**
-     * Display a listing of the resource.
-     * store_id sudah di-inject oleh middleware store.access
+     * Display a listing of the resource with Caching.
      */
     public function index(Request $request)
     {
-        $query = Category::withCount('products');
+        $storeId = $request->store_id;
+        $cacheKey = "store_{$storeId}_categories";
 
-        // store_id otomatis ada dari middleware (kecuali superadmin tanpa store_id)
-        if ($request->has('store_id')) {
-            $query->where('store_id', $request->store_id);
-        }
+        $categories = Cache::remember($cacheKey, 3600, function () use ($storeId) {
+            $query = Category::withCount('products');
+            if ($storeId) {
+                $query->where('store_id', $storeId);
+            }
+            return $query->get();
+        });
 
         return response()->json([
-            'data' => $query->get()
+            'data' => $categories
         ]);
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Store a newly created resource.
      */
     public function store(Request $request)
     {
@@ -37,6 +41,9 @@ class CategoryController extends Controller
         ]);
 
         $category = Category::create($request->only(['store_id', 'name']));
+
+        // Clear Cache
+        Cache::forget("store_{$request->store_id}_categories");
 
         return response()->json([
             'message' => 'Category created successfully',
@@ -51,7 +58,6 @@ class CategoryController extends Controller
     {
         $category = Category::findOrFail($id);
 
-        // Cek kepemilikan toko
         if ($request->has('store_id') && (int) $category->store_id !== (int) $request->store_id) {
             return response()->json(['message' => 'Anda tidak memiliki akses ke data ini.'], 403);
         }
@@ -62,13 +68,12 @@ class CategoryController extends Controller
     }
 
     /**
-     * Update the specified resource in storage.
+     * Update the specified resource.
      */
     public function update(Request $request, string $id)
     {
         $category = Category::findOrFail($id);
 
-        // Cek kepemilikan toko
         if ($request->has('store_id') && (int) $category->store_id !== (int) $request->store_id) {
             return response()->json(['message' => 'Anda tidak memiliki akses ke data ini.'], 403);
         }
@@ -79,6 +84,9 @@ class CategoryController extends Controller
 
         $category->update($request->only(['name']));
 
+        // Clear Cache
+        Cache::forget("store_{$category->store_id}_categories");
+
         return response()->json([
             'message' => 'Category updated successfully',
             'data' => $category
@@ -86,18 +94,21 @@ class CategoryController extends Controller
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Remove the specified resource.
      */
     public function destroy(Request $request, string $id)
     {
         $category = Category::findOrFail($id);
 
-        // Cek kepemilikan toko
         if ($request->has('store_id') && (int) $category->store_id !== (int) $request->store_id) {
             return response()->json(['message' => 'Anda tidak memiliki akses ke data ini.'], 403);
         }
 
+        $storeId = $category->store_id;
         $category->delete();
+
+        // Clear Cache
+        Cache::forget("store_{$storeId}_categories");
 
         return response()->json([
             'message' => 'Category deleted successfully'

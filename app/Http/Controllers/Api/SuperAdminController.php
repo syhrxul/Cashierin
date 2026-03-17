@@ -7,6 +7,8 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
+use Laravel\Pulse\Facades\Pulse;
+use Illuminate\Support\Facades\DB;
 
 class SuperAdminController extends Controller
 {
@@ -231,6 +233,48 @@ class SuperAdminController extends Controller
 
         return response()->json([
             'message' => "Akun '{$user->name}' aktif kembali. User perlu login ulang."
+        ]);
+    }
+
+    /**
+     * Ambil statistik performa dari Laravel Pulse (untuk API Dashboard).
+     */
+    public function pulseStats(Request $request)
+    {
+        // Pastikan hanya superadmin yang bisa akses
+        if ($request->user()->role !== 'superadmin') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $period = $request->get('period', '1_hour'); // 1_hour, 24_hours, etc.
+        $seconds = match ($period) {
+            '1_hour' => 3600,
+            '6_hours' => 21600,
+            '24_hours' => 86400,
+            '7_days' => 604800,
+            default => 3600,
+        };
+
+        $stats = [
+            'cpu' => Pulse::values('cpu')->first()?->value,
+            'memory' => Pulse::values('memory')->first()?->value,
+            'slow_requests' => Pulse::aggregate('slow_request', 'count', $seconds)->map(fn($item) => [
+                'uri' => $item->key,
+                'count' => (int) $item->value,
+            ]),
+            'slow_queries' => Pulse::aggregate('slow_query', 'count', $seconds)->map(fn($item) => [
+                'sql' => $item->key,
+                'count' => (int) $item->value,
+            ]),
+            'exceptions' => Pulse::aggregate('exception', 'count', $seconds)->map(fn($item) => [
+                'class' => $item->key,
+                'count' => (int) $item->value,
+            ]),
+        ];
+
+        return response()->json([
+            'period' => $period,
+            'data' => $stats
         ]);
     }
 }
