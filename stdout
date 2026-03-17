@@ -1,0 +1,30 @@
+[36mINFO[0m[0000] Status: 429                                  
+[36mINFO[0m[0000] Response Body: {
+    "message": "Too Many Attempts.",
+    "exception": "Illuminate\\Http\\Exceptions\\ThrottleRequestsException",
+    "file": "/var/www/Cashierin/vendor/laravel/framework/src/Illuminate/Routing/Middl 
+[36mINFO[0m[0000] Status: 429                                  
+[36mINFO[0m[0000] Response Body: {
+    "message": "Too Many Attempts.",
+    "exception": "Illuminate\\Http\\Exceptions\\ThrottleRequestsException",
+    "file": "/var/www/Cashierin/vendor/laravel/framework/src/Illuminate/Routing/Middl 
+[36mINFO[0m[0002] Status: 429                                  
+[36mINFO[0m[0002] Response Body: {
+    "message": "Too Many Attempts.",
+    "exception": "Illuminate\\Http\\Exceptions\\ThrottleRequestsException",
+    "file": "/var/www/Cashierin/vendor/laravel/framework/src/Illuminate/Routing/Middl 
+[36mINFO[0m[0002] Status: 429                                  
+[36mINFO[0m[0002] Response Body: {
+    "message": "Too Many Attempts.",
+    "exception": "Illuminate\\Http\\Exceptions\\ThrottleRequestsException",
+    "file": "/var/www/Cashierin/vendor/laravel/framework/src/Illuminate/Routing/Middl 
+[36mINFO[0m[0004] Status: 429                                  
+[36mINFO[0m[0004] Response Body: {
+    "message": "Too Many Attempts.",
+    "exception": "Illuminate\\Http\\Exceptions\\ThrottleRequestsException",
+    "file": "/var/www/Cashierin/vendor/laravel/framework/src/Illuminate/Routing/Middl 
+[36mINFO[0m[0004] Status: 429                                  
+[36mINFO[0m[0004] Response Body: {
+    "message": "Too Many Attempts.",
+    "exception": "Illuminate\\Http\\Exceptions\\ThrottleRequestsException",
+    "file": "/var/www/Cashierin/vendor/laravel/framework/src/Illuminate/Routing/Middl 

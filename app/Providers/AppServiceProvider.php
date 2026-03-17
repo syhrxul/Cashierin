@@ -38,14 +38,14 @@ class AppServiceProvider extends ServiceProvider
         // (60 request per menit per IP)
         \Illuminate\Cache\RateLimiting\Limit::perMinute(60)->by(fn ($request) => $request->ip());
 
-        // (5 request per menit per IP)
+        // Limit ketat untuk login dan register (50 request per menit per IP)
         \Illuminate\Support\Facades\RateLimiter::for('auth', function (\Illuminate\Http\Request $request) {
-            return \Illuminate\Cache\RateLimiting\Limit::perMinute(5)->by($request->ip());
+            return \Illuminate\Cache\RateLimiting\Limit::perMinute(50)->by($request->ip());
         });
 
-        // (60 request per menit per User/IP)
+        // Limit untuk API standard (100 request per menit per User/IP)
         \Illuminate\Support\Facades\RateLimiter::for('api', function (\Illuminate\Http\Request $request) {
-            return \Illuminate\Cache\RateLimiting\Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+            return \Illuminate\Cache\RateLimiting\Limit::perMinute(100)->by($request->user()?->id ?: $request->ip());
         });
     }
 
