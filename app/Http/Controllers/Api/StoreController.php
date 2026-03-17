@@ -17,7 +17,7 @@ class StoreController extends Controller
 
         // Superadmin bisa lihat semua toko
         if ($user->role === 'superadmin') {
-            $query = Store::query();
+            $query = Store::with('owner');
             if ($request->has('user_id')) {
                 $query->where('user_id', $request->user_id);
             }
@@ -25,7 +25,7 @@ class StoreController extends Controller
         }
 
         // User biasa hanya bisa lihat toko mereka
-        $store = Store::where('id', $user->store_id)->get();
+        $store = Store::with('owner')->where('id', $user->store_id)->get();
         return response()->json(['data' => $store]);
     }
 

@@ -25,7 +25,7 @@ class UserController extends Controller
         }
 
         return response()->json([
-            'data' => $query->get()
+            'data' => $query->with('approvedByUser')->get()
         ]);
     }
 

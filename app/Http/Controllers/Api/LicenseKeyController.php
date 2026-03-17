@@ -15,7 +15,7 @@ class LicenseKeyController extends Controller
      */
     public function index(Request $request)
     {
-        $query = LicenseKey::query();
+        $query = LicenseKey::with(['user', 'store']);
 
         if ($request->has('type')) {
             $query->where('type', $request->type);

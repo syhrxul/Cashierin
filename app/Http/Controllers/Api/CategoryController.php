@@ -1,4 +1,4 @@
-<?php
+u<?php
 
 namespace App\Http\Controllers\Api;
 
@@ -14,7 +14,7 @@ class CategoryController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Category::query();
+        $query = Category::withCount('products');
 
         // store_id otomatis ada dari middleware (kecuali superadmin tanpa store_id)
         if ($request->has('store_id')) {

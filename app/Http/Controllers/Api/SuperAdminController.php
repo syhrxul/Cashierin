@@ -38,7 +38,7 @@ class SuperAdminController extends Controller
             });
         }
 
-        return response()->json(['data' => $query->latest()->get()]);
+        return response()->json(['data' => $query->with('store')->latest()->get()]);
     }
 
     /**
