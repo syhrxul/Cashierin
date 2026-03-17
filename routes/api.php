@@ -54,7 +54,7 @@ Route::middleware(['auth:sanctum', 'superadmin', 'throttle:api'])->prefix('super
     Route::apiResource('license-keys', LicenseKeyController::class)->except(['store']);
 
     // Store management
-    Route::apiResource('stores', StoreController::class);
+    Route::apiResource('stores', StoreController::class)->names('superadmin.stores');
 });
 
 // =============================================
