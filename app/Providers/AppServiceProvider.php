@@ -28,6 +28,28 @@ class AppServiceProvider extends ServiceProvider
         \Illuminate\Support\Facades\Gate::define('viewApiDocs', function (?\App\Models\User $user) {
             return app()->isLocal() || $user?->role === 'superadmin';
         });
+
+        // Konfigurasi Rate Limiting (Anti-Spam Bot)
+        $this->configureRateLimiting();
+    }
+
+    /**
+     * Konfigurasi pembatasan request (Rate Limiting).
+     */
+    protected function configureRateLimiting(): void
+    {
+        // Limit umum untuk API (60 request per menit per IP)
+        \Illuminate\Cache\RateLimiting\Limit::perMinute(60)->by(fn ($request) => $request->ip());
+
+        // Limit ketat untuk login dan register (5 request per menit per IP)
+        \Illuminate\Support\Facades\RateLimiter::for('auth', function (\Illuminate\Http\Request $request) {
+            return \Illuminate\Cache\RateLimiting\Limit::perMinute(5)->by($request->ip());
+        });
+
+        // Limit untuk API standard (60 request per menit per User/IP)
+        \Illuminate\Support\Facades\RateLimiter::for('api', function (\Illuminate\Http\Request $request) {
+            return \Illuminate\Cache\RateLimiting\Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+        });
     }
 
     /**

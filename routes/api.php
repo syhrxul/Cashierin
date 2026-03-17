@@ -11,32 +11,33 @@ use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ProductController;
 
 // =============================================
-// PUBLIC ROUTES (tanpa auth)
+// PUBLIC ROUTES (Anti-Spam Login/Register)
 // =============================================
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/register/invite', [AuthController::class, 'registerByInvite']);
-Route::post('/login', [AuthController::class, 'login']);
+Route::middleware('throttle:auth')->group(function () {
+    Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/register/invite', [AuthController::class, 'registerByInvite']);
+    Route::post('/login', [AuthController::class, 'login']);
+});
 
 // =============================================
-// AUTHENTICATED (minimal) — user pending/frozen bisa akses
+// AUTHENTICATED (Rate Limited)
 // =============================================
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/approval-status', [AuthController::class, 'approvalStatus']);
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
 
-    // License key routes — bisa diakses walaupun toko frozen/inactive
-    // (supaya user bisa aktivasi/perpanjang lisensi)
+    // License key routes
     Route::post('/license-keys/activate', [LicenseKeyController::class, 'activate']);
     Route::get('/license-keys/store-status', [LicenseKeyController::class, 'storeStatus']);
 });
 
 // =============================================
-// SUPER ADMIN ROUTES — hanya superadmin
+// SUPER ADMIN ROUTES
 // =============================================
-Route::middleware(['auth:sanctum', 'superadmin'])->prefix('superadmin')->group(function () {
+Route::middleware(['auth:sanctum', 'superadmin', 'throttle:api'])->prefix('superadmin')->group(function () {
     // User management
     Route::get('/users', [\App\Http\Controllers\Api\SuperAdminController::class, 'listUsers']);
     Route::get('/users/pending', [\App\Http\Controllers\Api\SuperAdminController::class, 'pendingUsers']);
@@ -52,14 +53,14 @@ Route::middleware(['auth:sanctum', 'superadmin'])->prefix('superadmin')->group(f
     Route::post('/license-keys', [LicenseKeyController::class, 'store']);
     Route::apiResource('license-keys', LicenseKeyController::class)->except(['store']);
 
-    // Store management (CRUD tanpa batasan)
+    // Store management
     Route::apiResource('stores', StoreController::class);
 });
 
 // =============================================
-// STORE-SCOPED ROUTES — approved + toko sendiri + lisensi aktif
+// STORE-SCOPED ROUTES
 // =============================================
-Route::middleware(['auth:sanctum', 'store.access', 'store.license'])->group(function () {
+Route::middleware(['auth:sanctum', 'store.access', 'store.license', 'throttle:api'])->group(function () {
     // Store management
     Route::get('/store/invite-code', [StoreController::class, 'inviteCode']);
     Route::post('/store/regenerate-invite-code', [StoreController::class, 'regenerateInviteCode']);
