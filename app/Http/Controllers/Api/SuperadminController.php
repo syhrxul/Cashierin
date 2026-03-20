@@ -88,4 +88,34 @@ class SuperadminController extends Controller
                     ->get();
         return response()->json(['status' => 'success', 'data' => $users]);
     }
+
+    public function createUser(Request $request)
+    {
+        $request->validate([
+            'name'     => 'required|string|max:255',
+            'username' => 'required|string|max:50|unique:users,username|alpha_dash',
+            'email'    => 'required|email|unique:users,email',
+            'password' => 'required|min:8',
+            'role'     => 'required|in:superadmin,owner,manager,kasir',
+            'store_id' => 'nullable|exists:stores,id',
+        ]);
+
+        $user = User::create([
+            'name'     => $request->name,
+            'username' => strtolower($request->username),
+            'email'    => $request->email,
+            'password' => \Illuminate\Support\Facades\Hash::make($request->password),
+            'role'     => $request->role,
+            'store_id' => $request->store_id,
+            'approval_status' => 'approved',
+            'approved_by' => $request->user()->id,
+            'approved_at' => now(),
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'User berhasil dibuat.',
+            'data'    => $user
+        ], 201);
+    }
 }
