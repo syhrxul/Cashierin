@@ -129,8 +129,12 @@ class LicenseKeyController extends Controller
                 'message' => 'Hanya owner toko yang dapat mengaktivasi license key.'
             ], 403);
         }
-
         $inputKey = strtoupper(trim($request->input('key')));
+        \Log::info('License Activation Attempt', [
+            'store_id' => $user->store_id,
+            'received_key' => $request->all(),
+            'parsed_key' => $inputKey
+        ]);
         // Menggunakan query mentah untuk menghindari konflik kata kunci 'key' dan masalah collation
         $licenseKey = LicenseKey::whereRaw("BINARY `key` = ?", [$inputKey])->first();
 
