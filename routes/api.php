@@ -38,6 +38,7 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
 // SUPER ADMIN ROUTES
 // =============================================
 Route::middleware(['auth:sanctum', 'superadmin', 'throttle:api'])->prefix('superadmin')->group(function () {
+    Route::get('/dashboard', [\App\Http\Controllers\Api\SuperAdminController::class, 'dashboard']);
     // User management
     Route::get('/users', [\App\Http\Controllers\Api\SuperAdminController::class, 'listUsers']);
     Route::get('/users/pending', [\App\Http\Controllers\Api\SuperAdminController::class, 'pendingUsers']);

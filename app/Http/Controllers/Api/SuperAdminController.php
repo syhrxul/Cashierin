@@ -277,4 +277,28 @@ class SuperAdminController extends Controller
             'data' => $stats
         ]);
     }
+
+    /**
+     * Dashboard Summary for SuperAdmin.
+     */
+    public function dashboard(Request $request)
+    {
+        return response()->json([
+            'total_users' => User::count(),
+            'total_stores' => \App\Models\Store::count(),
+            'total_transactions' => \App\Models\Transaction::count(),
+            'total_revenue' => (float) \App\Models\Transaction::sum('total_price'),
+            'recent_registrations' => User::where('approval_status', 'pending')
+                ->latest()
+                ->take(5)
+                ->get()
+                ->map(fn($u) => [
+                    'id' => $u->id,
+                    'name' => $u->name,
+                    'owner' => $u->name, // User is the owner in this context
+                    'date' => $u->created_at->diffForHumans(),
+                    'status' => $u->approval_status
+                ])
+        ]);
+    }
 }

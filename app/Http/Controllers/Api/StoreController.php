@@ -15,9 +15,12 @@ class StoreController extends Controller
     {
         $user = $request->user();
 
-        // Superadmin bisa lihat semua toko
+        // Superadmin bisa lihat semua toko dengan indikasi shift aktif
         if ($user->role === 'superadmin') {
-            $query = Store::with('owner');
+            $query = Store::with('owner')->withCount(['shifts as active_shifts_count' => function($query) {
+                $query->where('status', 'open')->whereNull('ended_at');
+            }]);
+            
             if ($request->has('user_id')) {
                 $query->where('user_id', $request->user_id);
             }
