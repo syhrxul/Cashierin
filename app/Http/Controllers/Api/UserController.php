@@ -68,6 +68,14 @@ class UserController extends Controller
             return response()->json(['message' => 'User sudah disetujui sebelumnya.'], 400);
         }
 
+        // Cek batasan Trial (Maks 2 Karyawan selain Owner)
+        $store = \App\Models\Store::find($user->store_id);
+        if ($store && !$store->canAddUser()) {
+            return response()->json([
+                'message' => 'Batas maksimal (2 karyawan) untuk masa Percobaan (Trial) telah tercapai. Silakan perbarui lisensi Anda menjadi Full untuk membuka akses tanpa batas.'
+            ], 403);
+        }
+
         $request->validate([
             'role' => 'sometimes|in:manager,kasir',
         ]);
@@ -138,6 +146,15 @@ class UserController extends Controller
             'password' => 'required|string|min:8',
             'role' => 'required|in:manager,kasir',
         ]);
+
+        $store = \App\Models\Store::findOrFail($request->store_id);
+        
+        // Cek batasan Trial (Maks 2 Karyawan selain Owner)
+        if (!$store->canAddUser()) {
+            return response()->json([
+                'message' => 'Batas maksimal (2 karyawan) untuk masa Percobaan (Trial) telah tercapai. Silakan perbarui lisensi Anda menjadi Full untuk membuka akses tanpa batas.'
+            ], 403);
+        }
 
         $newUser = User::create([
             'name' => $request->name,

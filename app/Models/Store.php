@@ -168,8 +168,32 @@ class Store extends Model
     }
 
     // ========================================
-    // RELATIONSHIPS
+    // USAGE CONSTRAINTS (TRIAL LIMITS)
     // ========================================
+
+    /**
+     * Cek apakah toko bisa menambah produk baru (Max 10 untuk Trial).
+     */
+    public function canAddProduct(): bool
+    {
+        if ($this->license_type === 'full') return true;
+        
+        // Trial atau None dibatasi 10 produk
+        return $this->products()->count() < 10;
+    }
+
+    /**
+     * Cek apakah toko bisa menambah karyawan baru (Max 2 untuk Trial).
+     * Owner tidak dihitung (asumsi owner adalah user_id di stores).
+     */
+    public function canAddUser(): bool
+    {
+        if ($this->license_type === 'full') return true;
+        
+        // Count users with this store_id excluding the owner
+        $employeeCount = $this->users()->where('role', '!=', 'owner')->count();
+        return $employeeCount < 2;
+    }
 
     public function regenerateInviteCode(): string
     {

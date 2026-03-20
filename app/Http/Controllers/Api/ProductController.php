@@ -61,6 +61,15 @@ class ProductController extends Controller
             'is_active' => 'nullable|boolean',
         ]);
 
+        $store = \App\Models\Store::findOrFail($request->store_id);
+        
+        // Cek batasan Trial (Maks 10 Produk)
+        if (!$store->canAddProduct()) {
+            return response()->json([
+                'message' => 'Batas maksimal (10 produk) untuk masa Percobaan (Trial) telah tercapai. Silakan perbarui lisensi Anda menjadi Full untuk membuka akses tanpa batas.'
+            ], 403);
+        }
+
         $product = Product::create($request->only([
             'store_id', 'category_id', 'name', 'description', 'price', 'stock', 'sku', 'is_active'
         ]));
