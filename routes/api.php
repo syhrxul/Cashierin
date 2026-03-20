@@ -38,6 +38,7 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
 // SUPER ADMIN ROUTES
 // =============================================
 Route::middleware(['auth:sanctum', 'superadmin', 'throttle:api'])->prefix('superadmin')->group(function () {
+    Route::get('/activity-history', [\App\Http\Controllers\Api\SuperAdminController::class, 'logs']);
     Route::get('/dashboard', [\App\Http\Controllers\Api\SuperAdminController::class, 'dashboard']);
     // User management
     Route::get('/users', [\App\Http\Controllers\Api\SuperAdminController::class, 'listUsers']);
@@ -49,7 +50,7 @@ Route::middleware(['auth:sanctum', 'superadmin', 'throttle:api'])->prefix('super
     Route::post('/users/{id}/reject', [\App\Http\Controllers\Api\SuperAdminController::class, 'rejectUser']);
     Route::post('/users/{id}/change-password', [\App\Http\Controllers\Api\SuperAdminController::class, 'changePassword']);
     Route::get('/users/{id}/toggle-status', [\App\Http\Controllers\Api\SuperAdminController::class, 'toggleUserStatus']);
-    Route::get('/activity-logs', [\App\Http\Controllers\Api\SuperAdminController::class, 'logs']);
+    Route::get('/users/{id}/toggle-status', [\App\Http\Controllers\Api\SuperAdminController::class, 'toggleUserStatus']);
     Route::get('/pulse-stats', [\App\Http\Controllers\Api\SuperAdminController::class, 'pulseStats']);
 
     // License keys
