@@ -49,7 +49,7 @@ Route::middleware(['auth:sanctum', 'superadmin', 'throttle:api'])->prefix('super
     Route::post('/users/{id}/reject', [\App\Http\Controllers\Api\SuperAdminController::class, 'rejectUser']);
     Route::post('/users/{id}/change-password', [\App\Http\Controllers\Api\SuperAdminController::class, 'changePassword']);
     Route::get('/users/{id}/toggle-status', [\App\Http\Controllers\Api\SuperAdminController::class, 'toggleUserStatus']);
-    Route::get('/logs', [\App\Http\Controllers\Api\SuperAdminController::class, 'logs']);
+    Route::get('/activity-logs', [\App\Http\Controllers\Api\SuperAdminController::class, 'logs']);
     Route::get('/pulse-stats', [\App\Http\Controllers\Api\SuperAdminController::class, 'pulseStats']);
 
     // License keys
