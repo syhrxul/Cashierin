@@ -239,4 +239,33 @@ class StoreController extends Controller
             'data' => $store
         ]);
     }
+
+    /**
+     * Lihat informasi detail toko untuk dashboard owner (termasuk sisa lisensi).
+     */
+    public function ownerStoreInfo(Request $request)
+    {
+        $user = $request->user();
+        if (!$user->store_id) {
+            return response()->json(['message' => 'Toko belum didaftarkan.'], 404);
+        }
+
+        $store = Store::findOrFail($user->store_id);
+        
+        // Pastikan status lisensi terupdate
+        $store->checkAndUpdateLicenseStatus();
+
+        return response()->json([
+            'data' => [
+                'id' => $store->id,
+                'name' => $store->name,
+                'status' => $store->status,
+                'license_type' => $store->license_type,
+                'license_expires_at' => $store->license_expires_at,
+                'grace_period_ends_at' => $store->grace_period_ends_at,
+                'license_days_remaining' => $store->licenseDaysRemaining(),
+                'grace_period_days_remaining' => $store->gracePeriodDaysRemaining(),
+            ]
+        ]);
+    }
 }

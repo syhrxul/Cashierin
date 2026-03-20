@@ -67,8 +67,13 @@ Route::middleware(['auth:sanctum', 'approved', 'throttle:api'])->group(function(
     Route::post('/stores', [StoreController::class, 'store']);
 });
 
+// Routes that require store access but can be seen even if license is expired (for renewal/info)
+Route::middleware(['auth:sanctum', 'store.access', 'throttle:api'])->group(function () {
+    Route::get('/store/info', [StoreController::class, 'ownerStoreInfo']);
+});
+
 // =============================================
-// STORE-SCOPED ROUTES
+// STORE-SCOPED ROUTES (Requires Active/Grace License)
 // =============================================
 Route::middleware(['auth:sanctum', 'store.access', 'store.license', 'throttle:api'])->group(function () {
     // Store management
