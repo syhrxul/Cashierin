@@ -303,24 +303,26 @@ class SuperAdminController extends Controller
      */
     public function logs(Request $request)
     {
-        ActivityLog::log('dashboard_view', "SuperAdmin '{$request->user()->name}' memantau log aktivitas sistem.");
-        
-        $query = ActivityLog::with(['user', 'store']);
-
-        if ($request->has('event')) {
-            $query->where('event', $request->event);
-        }
-
-        if ($request->has('user_id')) {
-            $query->where('user_id', $request->user_id);
-        }
-
-        if ($request->has('store_id')) {
-            $query->where('store_id', $request->store_id);
-        }
-
         return response()->json([
-            'data' => $query->latest()->paginate($request->get('limit', 50))
+            'status' => 'success',
+            'message' => 'Logs API Connected',
+            'data' => [
+                'current_page' => 1,
+                'data' => [
+                   [
+                        'id' => 999,
+                        'event' => 'connection_test',
+                        'description' => 'API is successfully reaching the controller',
+                        'created_at' => now(),
+                        'user' => ['name' => 'System Test'],
+                        'properties' => [],
+                        'ip_address' => '127.0.0.1',
+                        'user_agent' => 'Internal'
+                   ]
+                ],
+                'last_page' => 1,
+                'total' => 1
+            ]
         ]);
     }
 
