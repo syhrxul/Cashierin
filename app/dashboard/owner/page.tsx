@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   DollarSign,
   Package,
@@ -14,29 +15,52 @@ import {
   Activity,
   Box,
   Clock,
-  ChevronRight
+  ChevronRight,
+  Lock,
+  ShieldCheck,
+  Store,
+  MapPin,
+  Briefcase,
+  Sparkles,
+  Zap,
+  ArrowRight,
+  LayoutDashboard,
+  CheckCircle2
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 
 export default function OwnerDashboard() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
   const [stats, setStats] = useState<any>(null);
+
+  // Store Form State
+  const [storeForm, setStoreForm] = useState({
+    name: '',
+    address: '',
+    business_hours: '08:00 - 22:00',
+    business_category: 'F&B'
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [creationSuccess, setCreationSuccess] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const data = await apiFetch('/owner/dashboard').catch(() => ({
-          today_revenue: 1250000,
-          total_inventory: 850,
-          active_employees: 5,
-          pending_orders: 12,
-          popular_products: [
-            { name: 'Nasi Goreng Spesial', sales: 42, price: 25000 },
-            { name: 'Es Teh Manis', sales: 38, price: 5000 },
-            { name: 'Ayam Geprek', sales: 31, price: 18000 }
-          ]
-        }));
-        setStats(data);
+        const userRes: any = await apiFetch('/user');
+        setUser(userRes);
+
+        if (userRes.approval_status === 'approved' && userRes.store_id) {
+          const data = await apiFetch('/owner/dashboard').catch(() => ({
+            today_revenue: 0,
+            total_inventory: 0,
+            active_employees: 0,
+            pending_orders: 0,
+            popular_products: []
+          }));
+          setStats(data);
+        }
       } catch (err) {
         console.error(err);
       } finally {
@@ -46,29 +70,247 @@ export default function OwnerDashboard() {
     fetchData();
   }, []);
 
+  const handleCreateStore = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      const res: any = await apiFetch('/stores', {
+        method: 'POST',
+        body: JSON.stringify({
+          ...storeForm,
+          user_id: user.id
+        })
+      });
+
+      const updatedUser = { ...user, store_id: res.data.id };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+
+      // Success Animation
+      setCreationSuccess(true);
+
+      // Redirect after animation
+      setTimeout(() => {
+        window.location.href = '/dashboard/owner';
+      }, 2500);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="flex h-[70vh] items-center justify-center">
-        <Loader2 className="animate-spin text-[#4F46E5]" size={32} />
+      <div className="flex flex-col h-[70vh] items-center justify-center gap-6">
+        <div className="w-16 h-16 rounded-full border-4 border-slate-100 border-t-indigo-600 animate-spin" />
+        <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-400 animate-pulse">Menyiapkan Workspace Anda...</p>
       </div>
     );
   }
 
+  // SUCCESS SCREEN
+  if (creationSuccess) {
+    return (
+      <div className="flex min-h-[70vh] items-center justify-center p-4">
+        <div className="w-full max-w-lg bg-white rounded-[3.5rem] shadow-2xl p-16 text-center space-y-10 animate-in zoom-in-95 duration-500 border border-slate-50">
+          <div className="relative">
+            <div className="w-28 h-28 bg-emerald-50 text-emerald-500 rounded-[3rem] flex items-center justify-center mx-auto shadow-2xl shadow-emerald-100/50">
+              <CheckCircle2 size={56} strokeWidth={1.5} />
+            </div>
+            <Sparkles className="absolute -top-4 -right-4 text-amber-400 animate-bounce" size={40} />
+          </div>
+          <div className="space-y-4">
+            <h1 className="text-3xl font-black tracking-tighter text-[#0F172A]">Toko Berhasil Berdiri!</h1>
+            <p className="text-slate-400 font-medium leading-relaxed">
+              Unit bisnis <span className="text-indigo-600 font-black">"{storeForm.name}"</span> Anda telah resmi terdaftar dalam sistem. Selamat memulai perjalanan bisnis Anda!
+            </p>
+          </div>
+          <div className="pt-4 flex items-center justify-center gap-3 text-indigo-600 font-black uppercase tracking-[0.25em] text-[10px]">
+            <Loader2 className="animate-spin" size={16} />
+            Mengaktifkan Dashboard...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // PHASE 1: PENDING APPROVAL
+  if (user?.approval_status === 'pending') {
+    return (
+      <div className="space-y-10 animate-in fade-in duration-1000">
+        <div className="bg-white rounded-[4rem] border border-slate-200/60 p-12 lg:p-20 shadow-2xl shadow-indigo-100/20 relative overflow-hidden text-center">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-50 opacity-50 blur-[120px] -translate-y-48 translate-x-48" />
+
+          <div className="relative z-10 max-w-2xl mx-auto space-y-10">
+            <div className="w-24 h-24 bg-rose-50 text-rose-500 rounded-[2.5rem] flex items-center justify-center mx-auto shadow-xl shadow-rose-100/50">
+              <Lock size={48} strokeWidth={1.5} />
+            </div>
+
+            <div className="space-y-4">
+              <h1 className="text-4xl font-black tracking-tighter text-[#0F172A]">Akses Dashboard Terkunci</h1>
+              <p className="text-slate-400 font-medium text-lg leading-relaxed">
+                Halo <span className="text-[#4F46E5] font-black">{user.name}</span>! Pendaftaran Anda telah kami terima. Saat ini akun Owner Anda sedang menunggu tinjauan dari **Administrator (SuperAdmin)**.
+              </p>
+            </div>
+
+            <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 flex flex-col md:flex-row items-center gap-8 text-left">
+              <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 shrink-0">
+                <Clock size={20} />
+              </div>
+              <div>
+                <h4 className="text-sm font-black text-[#0F172A] uppercase tracking-widest">Apa yang Harus Saya Lakukan?</h4>
+                <p className="text-xs text-slate-400 font-medium mt-1">Anda tidak perlu melakukan apapun. Kami akan segera mengaktifkan akun Anda dalam waktu maksimal 24 jam. Silakan cek halaman ini secara berkala.</p>
+              </div>
+            </div>
+
+            <div className="pt-6">
+              <div className="flex items-center justify-center gap-3 text-[10px] font-black text-slate-300 uppercase tracking-[0.3em]">
+                <div className="w-1.5 h-1.5 rounded-full bg-slate-200 animate-pulse" />
+                Waiting for System Approval
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Locked Feature Mock (Grayed out) */}
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-8 opacity-40 grayscale pointer-events-none">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="bg-slate-50 p-8 rounded-[2.5rem] border border-slate-100 h-40 flex flex-col justify-end">
+              <div className="w-8 h-8 rounded-lg bg-slate-200 mb-4" />
+              <div className="h-4 w-20 bg-slate-200 rounded animate-pulse" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // PHASE 2: APPROVED BUT NO STORE
+  if (user?.approval_status === 'approved' && !user.store_id) {
+    return (
+      <div className="space-y-10 animate-in fade-in zoom-in-95 duration-700">
+        <div className="max-w-4xl mx-auto space-y-10 pb-20">
+          <div className="text-center space-y-4">
+            <div className="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-[2rem] flex items-center justify-center mx-auto shadow-xl shadow-emerald-100">
+              <ShieldCheck size={40} />
+            </div>
+            <h1 className="text-4xl font-black tracking-tighter text-[#0F172A]">Akun Anda Aktif!</h1>
+            <p className="text-slate-400 font-medium text-lg">Hanya satu langkah terakhir: Daftarkan toko Anda untuk mulai berjualan.</p>
+          </div>
+
+          <div className="bg-white rounded-[4rem] border border-slate-200/60 p-12 lg:p-16 shadow-2xl shadow-indigo-100/30 overflow-hidden relative">
+            <div className="absolute top-0 right-0 p-12 opacity-5">
+              <Store size={200} />
+            </div>
+
+            <form onSubmit={handleCreateStore} className="relative z-10 space-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-2 col-span-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Nama Bisnis / Toko</label>
+                  <div className="relative">
+                    <Store className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                    <input
+                      required
+                      value={storeForm.name}
+                      onChange={(e) => setStoreForm({ ...storeForm, name: e.target.value })}
+                      className="w-full h-16 pl-14 pr-6 bg-slate-50 rounded-3xl font-bold text-sm outline-none focus:bg-white focus:ring-4 ring-indigo-50 border-none transition-all"
+                      placeholder="Contoh: Kedai Kopi Nikmat"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Kategori Bisnis</label>
+                  <div className="relative">
+                    <Briefcase className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                    <select
+                      value={storeForm.business_category}
+                      onChange={(e) => setStoreForm({ ...storeForm, business_category: e.target.value })}
+                      className="w-full h-16 pl-14 pr-6 bg-slate-50 rounded-3xl font-bold text-sm outline-none focus:bg-white focus:ring-4 ring-indigo-50 border-none transition-all appearance-none"
+                    >
+                      <option value="F&B">Kuliner (F&B)</option>
+                      <option value="Retail">Toko Kelontong / Retail</option>
+                      <option value="Fashion">Pakaian / Fashion</option>
+                      <option value="Services">Jasa / Services</option>
+                      <option value="Other">Lainnya</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Jam Operasional</label>
+                  <div className="relative">
+                    <Clock className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                    <input
+                      required
+                      value={storeForm.business_hours}
+                      onChange={(e) => setStoreForm({ ...storeForm, business_hours: e.target.value })}
+                      className="w-full h-16 pl-14 pr-6 bg-slate-50 rounded-3xl font-bold text-sm outline-none focus:bg-white focus:ring-4 ring-indigo-50 border-none transition-all"
+                      placeholder="08:00 - 22:00"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2 col-span-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Alamat Lengkap</label>
+                  <div className="relative">
+                    <MapPin className="absolute left-6 top-6 text-slate-300" size={18} />
+                    <textarea
+                      required
+                      rows={3}
+                      value={storeForm.address}
+                      onChange={(e) => setStoreForm({ ...storeForm, address: e.target.value })}
+                      className="w-full p-6 pl-14 bg-slate-50 rounded-3xl font-bold text-sm outline-none focus:bg-white focus:ring-4 ring-indigo-50 border-none transition-all resize-none"
+                      placeholder="Jl. Merdeka No. 123, Bandung"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full h-18 bg-[#4F46E5] text-white font-black uppercase tracking-[0.2em] text-[11px] rounded-[2rem] hover:bg-[#4338CA] transition-all flex items-center justify-center gap-3 shadow-2xl shadow-indigo-100 disabled:opacity-50"
+              >
+                {submitting ? <Loader2 className="animate-spin" size={20} /> : (
+                  <>
+                    <Zap size={18} />
+                    Inisialisasi Toko Anda
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // PHASE 3: READY (Existing Dashboard)
   return (
     <div className="space-y-10 animate-in fade-in duration-1000">
       {/* Header View */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 bg-white p-10 rounded-[3rem] border border-slate-200/60 shadow-xl shadow-slate-100/50">
-        <div>
-          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[#4F46E5] mb-2 px-3 py-1 bg-indigo-50 border border-indigo-100 rounded-lg inline-block">
-            Store Insights
+        <div className="flex items-center gap-6">
+          <div className="w-20 h-20 rounded-[2rem] bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100 shrink-0">
+            <Store size={32} />
           </div>
-          <h1 className="text-3xl font-black tracking-tight text-[#0F172A]">Halo, Pemilik Toko</h1>
-          <p className="text-sm text-slate-400 font-medium italic mt-1">Status operasional toko Anda hari ini sangat memuaskan.</p>
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[#4F46E5] mb-2 px-3 py-1 bg-indigo-50 border border-indigo-100 rounded-lg inline-block">
+              Store Analysis
+            </div>
+            <h1 className="text-3xl font-black tracking-tight text-[#0F172A]">Halo, {user?.name}</h1>
+            <p className="text-sm text-slate-400 font-medium italic mt-1">Status operasional toko Anda hari ini sangat memuaskan.</p>
+          </div>
         </div>
         <div className="flex gap-3">
-          <button className="h-12 px-6 bg-[#4F46E5] text-white font-black rounded-2xl flex items-center gap-3 shadow-lg shadow-indigo-100 hover:bg-[#4338CA] transition-all active:scale-95">
+          <button
+            onClick={() => router.push('/dashboard/kasir')}
+            className="h-14 px-8 bg-[#4F46E5] text-white font-black rounded-2xl flex items-center gap-3 shadow-lg shadow-indigo-100 hover:bg-[#4338CA] transition-all active:scale-95"
+          >
             <ShoppingCart size={19} />
-            Buka Kasir
+            Buka Kasir (POS)
           </button>
         </div>
       </div>
@@ -91,23 +333,26 @@ export default function OwnerDashboard() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-        <div className="lg:col-span-2 bg-white rounded-[4rem] border border-slate-200/60 p-12 shadow-sm">
-          <div className="flex items-center justify-between mb-12">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 pb-20">
+        <div className="lg:col-span-2 bg-white rounded-[4rem] border border-slate-200/60 p-12 shadow-sm relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-8 opacity-5">
+            <TrendingUp size={120} />
+          </div>
+          <div className="flex items-center justify-between mb-12 relative z-10">
             <h3 className="text-2xl font-black tracking-tighter">Penjualan 24 Jam</h3>
             <div className="flex gap-2">
               <div className="w-10 h-10 rounded-xl border border-slate-200 flex items-center justify-center text-slate-400 hover:text-[#4F46E5] transition-colors cursor-pointer"><Activity size={18} /></div>
             </div>
           </div>
           {/* Simple Graphic Mock */}
-          <div className="h-64 flex items-end gap-3 pb-4">
+          <div className="h-64 flex items-end gap-3 pb-4 relative z-10">
             {[60, 40, 80, 50, 90, 70, 45, 85, 30, 75, 55, 65].map((h, i) => (
               <div key={i} className="flex-1 bg-slate-50 border border-slate-100 rounded-xl hover:bg-slate-100 transition-colors group relative" style={{ height: `${h}%` }}>
                 <div className="absolute inset-0 bg-indigo-600/0 group-hover:bg-indigo-600/10 transition-colors rounded-xl" />
               </div>
             ))}
           </div>
-          <div className="flex justify-between px-2 mt-6 text-[10px] font-black uppercase tracking-widest text-slate-300">
+          <div className="flex justify-between px-2 mt-6 text-[10px] font-black uppercase tracking-widest text-slate-300 relative z-10">
             <span>08:00 AM</span>
             <span>12:00 PM</span>
             <span>04:00 PM</span>
@@ -115,12 +360,15 @@ export default function OwnerDashboard() {
           </div>
         </div>
 
-        <div className="bg-slate-900 rounded-[4rem] p-12 text-white overflow-hidden relative group">
+        <div className="bg-slate-900 rounded-[4rem] p-12 text-white overflow-hidden relative group shadow-2xl shadow-indigo-900/40">
           <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600 opacity-20 blur-[100px] -translate-y-32 translate-x-32" />
           <div className="relative z-10 w-full">
-            <h3 className="text-xl font-bold tracking-tight mb-10">Produk Terlaris</h3>
+            <h3 className="text-xl font-bold tracking-tight mb-10 flex items-center gap-3">
+              Produk Terlaris
+              <Sparkles className="text-amber-400" size={18} />
+            </h3>
             <div className="space-y-8">
-              {stats?.popular_products?.map((p: any, i: number) => (
+              {stats?.popular_products?.length > 0 ? stats?.popular_products?.map((p: any, i: number) => (
                 <div key={i} className="flex items-center justify-between group/item cursor-pointer">
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 group-hover/item:bg-white/10 transition-all font-black text-xs">
@@ -135,10 +383,19 @@ export default function OwnerDashboard() {
                     <ChevronRight size={18} />
                   </div>
                 </div>
-              ))}
+              )) : (
+                <div className="text-center py-10 text-white/20">
+                  <Box size={40} className="mx-auto mb-4" />
+                  <p className="text-[10px] font-black uppercase tracking-widest">Belum ada data</p>
+                </div>
+              )}
             </div>
-            <button className="w-full mt-12 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-white/30 hover:text-white hover:bg-white/5 border border-white/10 rounded-2xl transition-all">
+            <button
+              onClick={() => router.push('/dashboard/owner/inventory')}
+              className="w-full mt-12 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-white/30 hover:text-white hover:bg-white/5 border border-white/10 rounded-3xl transition-all flex items-center justify-center gap-2 group"
+            >
               Full Inventory Stats
+              <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
             </button>
           </div>
         </div>

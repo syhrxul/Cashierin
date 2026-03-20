@@ -16,7 +16,12 @@ import {
   ShoppingCart,
   Package,
   FileText,
-  UserCircle
+  UserCircle,
+  ChevronDown,
+  Clock,
+  XCircle,
+  CheckCircle2,
+  Lock
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
@@ -29,12 +34,20 @@ const menuByRole: Record<Role, any[]> = {
         { icon: LayoutDashboard, label: 'Ringkasan', href: '/dashboard/superadmin' },
         { icon: Store, label: 'Daftar Toko', href: '/dashboard/superadmin/toko' },
         { icon: Key, label: 'Serial License', href: '/dashboard/superadmin/license' },
-        { icon: Users, label: 'Semua Pengguna', href: '/dashboard/superadmin/users' },
+        {
+          icon: Users,
+          label: 'Semua Pengguna',
+          href: '/dashboard/superadmin/users',
+          subItems: [
+            { label: 'Daftar Semua', href: '/dashboard/superadmin/users', icon: Users },
+            { label: 'Menunggu Approval', href: '/dashboard/superadmin/users?status=pending', icon: Clock },
+            { label: 'Daftar Penolakan', href: '/dashboard/superadmin/users?status=rejected', icon: XCircle },
+          ]
+        },
       ]
     },
     {
       label: 'Sistem', items: [
-        { icon: Activity, label: 'Log Aktivitas', href: '/dashboard/superadmin/activity' },
         { icon: BarChart3, label: 'Statistik Global', href: '/dashboard/superadmin/stats' },
         { icon: Settings, label: 'Pengaturan', href: '/dashboard/superadmin/settings' },
       ]
@@ -79,17 +92,21 @@ const menuByRole: Record<Role, any[]> = {
 export default function DashboardSidebar() {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState<Role>('superadmin');
+  const [expandedMenus, setExpandedMenus] = useState<string[]>(['Semua Pengguna']);
 
   useEffect(() => {
     const userJson = localStorage.getItem('user');
     if (userJson) {
-      const user = JSON.parse(userJson);
-      setRole((user.role?.toLowerCase() || 'superadmin') as Role);
+      const u = JSON.parse(userJson);
+      setUser(u);
+      setRole((u.role?.toLowerCase() || 'superadmin') as Role);
     }
   }, []);
 
   const groups = menuByRole[role] || [];
+  const isPending = user?.approval_status === 'pending';
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -97,8 +114,14 @@ export default function DashboardSidebar() {
     window.location.href = '/login';
   };
 
+  const toggleExpand = (label: string) => {
+    setExpandedMenus(prev =>
+      prev.includes(label) ? prev.filter(i => i !== label) : [...prev, label]
+    );
+  };
+
   return (
-    <aside className={`flex flex-col bg-white border-r border-[#E2E8F0] h-screen transition-all duration-300 relative ${isCollapsed ? 'w-20' : 'w-72'}`}>
+    <aside className={`flex flex-col bg-white border-r border-[#E2E8F0] h-screen transition-all duration-300 relative z-50 ${isCollapsed ? 'w-20' : 'w-72'}`}>
       <div className="h-20 flex items-center px-6 mb-4">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 bg-indigo-600 rounded-lg flex items-center justify-center text-white shrink-0 shadow-lg shadow-indigo-100">
@@ -122,20 +145,70 @@ export default function DashboardSidebar() {
             )}
             <div className="space-y-1">
               {group.items.map((item: any) => {
-                const isActive = pathname === item.href;
+                const isSubMenuActive = item.subItems?.some((sub: any) => pathname === sub.href);
+                const isActive = pathname === item.href || isSubMenuActive;
+                const isExpanded = expandedMenus.includes(item.label);
+                const hasSubItems = item.subItems && item.subItems.length > 0;
+
+                // Special "Locked" logic for Pending Owners
+                const isLocked = isPending && item.label !== 'Dashboard' && item.href !== '/dashboard/owner';
+
                 return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all duration-200 group relative ${isActive
-                      ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-200 font-bold'
-                      : 'text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]'
-                      }`}
-                  >
-                    <item.icon size={20} className={`${isActive ? 'text-white' : 'text-[#94A3B8] group-hover:text-[#4F46E5] transition-colors'}`} />
-                    {!isCollapsed && <span className="text-[13px] whitespace-nowrap truncate">{item.label}</span>}
-                    {isActive && !isCollapsed && <div className="ml-auto w-1 h-1 rounded-full bg-white/40" />}
-                  </Link>
+                  <div key={item.label} className="space-y-1">
+                    {hasSubItems && !isCollapsed ? (
+                      <div>
+                        <button
+                          onClick={() => toggleExpand(item.label)}
+                          className={`flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all duration-200 group w-full ${isActive && !isExpanded
+                            ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-200 font-bold'
+                            : 'text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]'
+                            }`}
+                        >
+                          <item.icon size={20} className={`${isActive && !isExpanded ? 'text-white' : 'text-[#94A3B8] group-hover:text-[#4F46E5]'}`} />
+                          <span className="text-[13px] whitespace-nowrap truncate">{item.label}</span>
+                          <ChevronDown size={14} className={`ml-auto transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
+                        </button>
+
+                        {isExpanded && (
+                          <div className="mt-1 ml-4 pl-4 border-l-2 border-slate-50 space-y-1 animate-in slide-in-from-top-2 duration-300">
+                            {item.subItems.map((sub: any) => {
+                              const isSubActive = pathname === sub.href;
+                              return (
+                                <Link
+                                  key={sub.href}
+                                  href={sub.href}
+                                  className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-[12px] font-bold transition-all ${isSubActive
+                                    ? 'bg-indigo-50 text-indigo-600'
+                                    : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+                                    }`}
+                                >
+                                  {sub.icon && <sub.icon size={14} />}
+                                  {sub.label}
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <Link
+                        key={item.href}
+                        href={isLocked ? '#' : item.href}
+                        onClick={(e) => isLocked && e.preventDefault()}
+                        className={`flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all duration-200 group relative ${isActive
+                          ? 'bg-indigo-600 text-white shadow-xl shadow-indigo-200 font-bold'
+                          : isLocked ? 'opacity-40 cursor-not-allowed' : 'text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]'
+                          }`}
+                      >
+                        <item.icon size={20} className={`${isActive ? 'text-white' : 'text-[#94A3B8] group-hover:text-[#4F46E5] transition-colors'} ${isLocked ? 'blur-[0.5px]' : ''}`} />
+                        {!isCollapsed && (
+                          <span className="text-[13px] whitespace-nowrap truncate">{item.label}</span>
+                        )}
+                        {isLocked && !isCollapsed && <Lock size={12} className="ml-auto text-slate-300" />}
+                        {isActive && !isCollapsed && !isLocked && <div className="ml-auto w-1 h-1 rounded-full bg-white/40" />}
+                      </Link>
+                    )}
+                  </div>
                 );
               })}
             </div>
