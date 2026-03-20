@@ -42,7 +42,12 @@ class EnsureStoreAccess
         }
 
         // User biasa harus punya store_id
+        // Pengecualian: Route "POST /api/stores" diperbolehkan jika user adalah owner (untuk inisialisasi toko)
         if (!$user->store_id) {
+            if ($request->is('api/stores') && $request->isMethod('POST')) {
+                return $next($request);
+            }
+
             return response()->json([
                 'message' => 'Akun Anda belum terdaftar pada toko manapun. Hubungi admin.'
             ], 403);
