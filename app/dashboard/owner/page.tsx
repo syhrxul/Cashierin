@@ -34,6 +34,7 @@ export default function OwnerDashboard() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [stats, setStats] = useState<any>(null);
+  const [storeInfo, setStoreInfo] = useState<any>(null);
 
   // Store Form State
   const [storeForm, setStoreForm] = useState({
@@ -52,14 +53,20 @@ export default function OwnerDashboard() {
         setUser(userRes);
 
         if (userRes.approval_status === 'approved' && userRes.store_id) {
-          const data = await apiFetch('/owner/dashboard').catch(() => ({
-            today_revenue: 0,
-            total_inventory: 0,
-            active_employees: 0,
-            pending_orders: 0,
-            popular_products: []
-          }));
-          setStats(data);
+          // Parallel fetch for speed
+          const [statsData, infoRes]: [any, any] = await Promise.all([
+            apiFetch('/owner/dashboard').catch(() => ({
+              today_revenue: 0,
+              total_inventory: 0,
+              active_employees: 0,
+              pending_orders: 0,
+              popular_products: []
+            })),
+            apiFetch('/store/info').catch(() => null)
+          ]);
+
+          setStats(statsData);
+          if (infoRes) setStoreInfo(infoRes.data);
         }
       } catch (err) {
         console.error(err);
@@ -287,9 +294,30 @@ export default function OwnerDashboard() {
     );
   }
 
-  // PHASE 3: READY (Existing Dashboard)
+  // PHASE 3: MAIN VIEW
   return (
     <div className="space-y-10 animate-in fade-in duration-1000">
+      {/* License Warning Banner */}
+      {storeInfo?.license_days_remaining !== null && storeInfo?.license_days_remaining < 7 && storeInfo?.status !== 'frozen' && (
+        <div className="bg-gradient-to-r from-amber-500/10 to-amber-600/5 border border-amber-200/50 p-6 rounded-[2.5rem] flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
+          <div className="flex items-center gap-6">
+            <div className="w-14 h-14 bg-amber-500 text-white rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-amber-200">
+              <Clock size={28} />
+            </div>
+            <div>
+              <h4 className="text-lg font-black text-amber-900 tracking-tight">Lisensi Hampir Berakhir!</h4>
+              <p className="text-sm text-amber-700 font-medium">Sisa waktu trial/lisensi Anda tinggal <span className="font-black underline">{storeInfo.license_days_remaining} hari</span> lagi. Segera perbarui sebelum toko dibekukan.</p>
+            </div>
+          </div>
+          <button
+            onClick={() => router.push('/dashboard/owner/settings?tab=license')}
+            className="h-12 px-8 bg-amber-500 text-white font-black rounded-xl text-[10px] uppercase tracking-widest hover:bg-amber-600 transition-all shadow-md shadow-amber-100"
+          >
+            Aktivasi Lisensi
+          </button>
+        </div>
+      )}
+
       {/* Header View */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 bg-white p-10 rounded-[3rem] border border-slate-200/60 shadow-xl shadow-slate-100/50">
         <div className="flex items-center gap-6">
@@ -403,3 +431,4 @@ export default function OwnerDashboard() {
     </div>
   );
 }
+

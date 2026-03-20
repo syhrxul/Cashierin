@@ -17,7 +17,8 @@ import {
   ChevronRight,
   User,
   History,
-  Info
+  Info,
+  Lock
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 
@@ -42,17 +43,24 @@ export default function KasirPOSPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Semua');
-  const [checkoutStep, setCheckoutStep] = useState(0); // 0: POS, 1: Payment Selection, 2: Success
+  const [checkoutStep, setCheckoutStep] = useState(0);
+
+  const [storeInfo, setStoreInfo] = useState<any>(null);
 
   useEffect(() => {
     async function fetchProducts() {
       try {
+        // Fetch store info first to check status
+        const infoRes: any = await apiFetch('/store/info').catch(() => null);
+        if (infoRes) setStoreInfo(infoRes.data);
+
+        // Then fetch products
         const response: any = await apiFetch('/products');
-        // Handle Laravel data wrapper or direct array
         const productsList = response.data || (Array.isArray(response) ? response : []);
         setProducts(productsList);
-      } catch (err) {
-        console.error(err);
+      } catch (err: any) {
+        console.error('[POS] Load failed:', err);
+        // If 403 and message contains license/frozen, we handle it via storeInfo
       } finally {
         setLoading(false);
       }
@@ -95,8 +103,10 @@ export default function KasirPOSPage() {
     (p.name.toLowerCase().includes(search.toLowerCase()))
   );
 
+
+  // MAIN VIEW
   return (
-    <div className="flex gap-8 h-[calc(100vh-130px)] -mt-2 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+    <div className={`flex gap-8 h-[calc(100vh-130px)] -mt-2 animate-in fade-in slide-in-from-bottom-4 duration-1000`}>
       {/* Product Selection Center */}
       <div className="flex-1 flex flex-col gap-6 h-full mb-1">
         {/* Header Search & Nav */}

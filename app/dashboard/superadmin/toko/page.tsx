@@ -57,6 +57,7 @@ interface StoreData {
     username: string;
   };
   status: string;
+  is_manual_frozen: boolean;
   created_at: string;
   active_shifts_count?: number;
   products_count?: number;
@@ -72,24 +73,53 @@ export default function StoreListPage() {
   const [selectedStore, setSelectedStore] = useState<StoreData | null>(null);
   const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    async function fetchData() {
-      setLoading(true);
-      setErrorMsg(null);
-      try {
-        console.log('[StoreListPage] Syncing full metrics from server...');
-        const response: any = await apiFetch('/superadmin/stores');
-        const storesList = response.data || (Array.isArray(response) ? response : []);
-        setStores(storesList);
-      } catch (err: any) {
-        console.error('[StoreListPage] Load failed:', err);
-        setErrorMsg(err.message || 'Gagal memuat daftar toko dari server.');
-      } finally {
-        setLoading(false);
-      }
+  async function fetchData() {
+    setLoading(true);
+    setErrorMsg(null);
+    try {
+      console.log('[StoreListPage] Syncing full metrics from server...');
+      const response: any = await apiFetch('/superadmin/stores');
+      const storesList = response.data || (Array.isArray(response) ? response : []);
+      setStores(storesList);
+    } catch (err: any) {
+      console.error('[StoreListPage] Load failed:', err);
+      setErrorMsg(err.message || 'Gagal memuat daftar toko dari server.');
+    } finally {
+      setLoading(false);
     }
+  }
+
+  useEffect(() => {
     fetchData();
   }, []);
+
+  const handleToggleFreeze = async (id: number) => {
+    if (!confirm('Apakah Anda yakin ingin mengubah status bekukan pada toko ini?')) return;
+    setLoading(true);
+    try {
+      await apiFetch(`/superadmin/stores/${id}/toggle-freeze`, { method: 'POST' });
+      await fetchData();
+      setSelectedStore(null);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Gagal mengubah status toko.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteStore = async (id: number) => {
+    if (!confirm('PERINGATAN: Menghapus toko akan menghapus SELURUH data transaksi, produk, dan laporan permanen. Lanjutkan?')) return;
+    setLoading(true);
+    try {
+      await apiFetch(`/superadmin/stores/${id}`, { method: 'DELETE' });
+      await fetchData();
+      setSelectedStore(null);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Gagal menghapus toko.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredStores = stores.filter(s =>
     s.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -398,12 +428,35 @@ export default function StoreListPage() {
             </div>
 
             {/* Premium Control Center */}
-            <div className="p-12 pt-0 flex gap-6 mt-auto bg-white/50 backdrop-blur-sm">
+            <div className="p-12 pt-0 flex flex-wrap gap-4 mt-auto bg-white/50 backdrop-blur-sm">
               <button
                 onClick={() => setSelectedStore(null)}
-                className="flex-1 h-18 bg-white text-[#4F46E5] font-black uppercase tracking-[0.25em] text-[11px] rounded-[2rem] border-2 border-indigo-50 hover:bg-slate-50 transition-all flex items-center justify-center shadow-sm"
+                className="flex-1 min-w-[200px] h-14 bg-white text-slate-400 font-black uppercase tracking-[0.25em] text-[10px] rounded-2xl border border-slate-200 hover:bg-slate-50 transition-all flex items-center justify-center"
               >
-                Tutup Panel Audit
+                Tutup Panel
+              </button>
+
+              <button
+                onClick={() => handleToggleFreeze(selectedStore.id)}
+                disabled={loading}
+                className={`flex-1 min-w-[200px] h-14 font-black uppercase tracking-[0.25em] text-[10px] rounded-2xl border transition-all flex items-center justify-center gap-3 ${selectedStore.is_manual_frozen
+                  ? 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100 shadow-sm'
+                  : 'bg-amber-50 text-amber-600 border-amber-100 hover:bg-amber-100 shadow-sm'
+                  }`}
+              >
+                {selectedStore.is_manual_frozen ? (
+                  <><Zap size={18} /> Batalkan Bekukan</>
+                ) : (
+                  <><ShieldAlert size={18} /> Bekukan Toko</>
+                )}
+              </button>
+
+              <button
+                onClick={() => handleDeleteStore(selectedStore.id)}
+                disabled={loading}
+                className="flex-1 min-w-[200px] h-14 bg-rose-50 text-rose-600 font-black uppercase tracking-[0.25em] text-[10px] rounded-2xl border border-rose-100 hover:bg-rose-100 transition-all flex items-center justify-center gap-3 shadow-sm"
+              >
+                <XCircle size={18} /> Hapus Permanen
               </button>
             </div>
           </div>

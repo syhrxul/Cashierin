@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import DashboardSidebar from '@/components/DashboardSidebar';
-import { User, Bell, Search, Menu, X, ChevronDown, CheckCircle } from 'lucide-react';
+import { User, Bell, Search, Menu, X, ChevronDown, CheckCircle, Lock, Zap } from 'lucide-react';
+import { apiFetch } from '@/lib/api';
 
 export default function DashboardLayout({
   children,
@@ -11,9 +12,14 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [user, setUser] = useState<any>(null);
+  const [storeInfo, setStoreInfo] = useState<any>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  const isSettingsPage = pathname === '/dashboard/owner/settings';
+  const isFrozen = (storeInfo?.status === 'frozen' || storeInfo?.is_manual_frozen) && !isSettingsPage;
 
   useEffect(() => {
     setMounted(true);
@@ -24,7 +30,15 @@ export default function DashboardLayout({
       router.replace('/login');
     } else if (storedUser) {
       try {
-        setUser(JSON.parse(storedUser));
+        const userData = JSON.parse(storedUser);
+        setUser(userData);
+
+        // Fetch store info if owner/kasir to check lock status globally
+        if (userData.role !== 'superadmin' && userData.store_id) {
+          apiFetch('/store/info')
+            .then((res: any) => setStoreInfo(res.data))
+            .catch(() => null);
+        }
       } catch (e) {
         console.error('Failed to parse user data');
       }
@@ -117,8 +131,50 @@ export default function DashboardLayout({
         )}
 
         {/* Scrollable Content Area */}
-        <div className="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar scroll-smooth">
-          <div className="mx-auto max-w-7xl animate-in slide-in-from-bottom-4 duration-500">
+        <div className="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar scroll-smooth relative">
+          {/* Global Frozen Blocker Overlay */}
+          {isFrozen && (
+            <div className="absolute inset-0 z-[100] flex items-center justify-center p-6 lg:p-12 animate-in fade-in duration-500 rounded-[3rem]">
+              {/* Blurred Background Layer */}
+              <div className="absolute inset-0 bg-slate-100/10 backdrop-blur-xl pointer-events-none" />
+
+              <div className="relative z-10 w-full max-w-xl bg-white rounded-[3.5rem] border border-[#E2E8F0] shadow-2xl p-12 lg:p-16 text-center space-y-10 overflow-hidden">
+                {/* Visual indicator */}
+                <div className="w-20 h-20 bg-rose-50 text-rose-500 rounded-[2.5rem] flex items-center justify-center mx-auto shadow-xl shadow-rose-100/50">
+                  <Lock size={40} />
+                </div>
+
+                <div className="space-y-4">
+                  <h2 className="text-3xl font-black tracking-tighter text-[#0F172A]">Sistem Dibekukan</h2>
+                  <p className="text-slate-500 font-medium leading-relaxed">
+                    {user?.role === 'kasir'
+                      ? 'Operasional kasir dihentikan sementara karena lisensi toko telah berakhir. Silakan hubungi Owner untuk memperbarui lisensi.'
+                      : 'Masa lisensi toko Anda telah berakhir dan melewati batas toleransi 7 hari. Silakan hubungi Administrator untuk memperbarui lisensi.'}
+                  </p>
+                </div>
+
+                <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 flex items-center gap-6 text-left">
+                  <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-[#4F46E5] shrink-0 shadow-sm"><Zap size={20} /></div>
+                  <div>
+                    <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Tindakan Diperlukan</p>
+                    <p className="text-xs text-slate-600 font-bold mt-1 leading-relaxed">Status Toko: <span className="text-rose-500 uppercase">Frozen</span>. Hubungi Admin/Owner segera agar sistem dapat digunakan kembali.</p>
+                  </div>
+                </div>
+
+                {user?.role === 'owner' && (
+                  <button
+                    onClick={() => router.push('/dashboard/owner/settings?tab=license')}
+                    className="w-full h-16 bg-[#4F46E5] text-white font-black uppercase tracking-[0.2em] text-[10px] rounded-2xl hover:bg-[#4338CA] transition-all flex items-center justify-center gap-3 shadow-xl shadow-indigo-100"
+                  >
+                    <Zap size={18} /> Update Lisensi
+                  </button>
+                )}
+                <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Pusat Bantuan Cashierin: support@cashierin.id</p>
+              </div>
+            </div>
+          )}
+
+          <div className={`mx-auto max-w-7xl relative ${isFrozen ? 'blur-2xl opacity-40 grayscale pointer-events-none select-none overflow-hidden h-[70vh]' : 'animate-in slide-in-from-bottom-4 duration-500'}`}>
             {children}
           </div>
         </div>

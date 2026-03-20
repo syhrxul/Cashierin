@@ -8,10 +8,13 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const url = `${API_BASE_URL}${cleanEndpoint}`;
 
+  // Guest endpoints that shouldn't leak old/expired tokens
+  const isGuestRoute = cleanEndpoint === '/login' || cleanEndpoint === '/register' || cleanEndpoint === '/register/invite';
+
   const headers = {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    ...(token && !isGuestRoute ? { 'Authorization': `Bearer ${token}` } : {}),
     ...options.headers,
   };
 
@@ -19,19 +22,24 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
     const response = await fetch(url, {
       ...options,
       headers,
+      mode: 'cors',
+      credentials: 'omit',
+      cache: 'no-store',
     });
 
-    // Handle session expiration
-    if (response.status === 401) {
-      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+    // Handle session expiration (only for non-login pages)
+    if (response.status === 401 && !isGuestRoute) {
+      if (typeof window !== 'undefined') {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        window.location.href = '/login';
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
       }
     }
 
     const responseText = await response.text();
-    let data = {};
+    let data: any = {};
 
     try {
       if (responseText) {
@@ -40,20 +48,24 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
     } catch (e) {
       // If it's not JSON, it might be an HTML error page from the server
       console.error('[API JSON Parse Error]:', responseText);
-      throw new Error(`Respons server bukan JSON (Status: ${response.status})`);
+      throw new Error(`Respons server bukan JSON (Status: ${response.status}). Hubungi administrator.`);
     }
 
     if (!response.ok) {
       console.error(`[API Error] Status ${response.status}:`, { url, data });
 
-      if (response.status === 403) throw new Error((data as any).message || 'Izin akses ditolak (403).');
-      if (response.status === 404) throw new Error('Endpoint tidak ditemukan (404).');
-      if (response.status === 422 && (data as any).errors) {
-        const errors: any = Object.values((data as any).errors)[0];
-        throw new Error(errors[0] || 'Validasi gagal.');
+      // Handle Laravel Validation Errors (422)
+      if (response.status === 422 && data.errors) {
+        const firstError: any = Object.values(data.errors)[0];
+        throw new Error(firstError[0] || 'Validasi input gagal.');
       }
 
-      throw new Error((data as any).message || (data as any).error || `Kesalahan sistem (${response.status})`);
+      // Handle specific status codes
+      if (response.status === 403) throw new Error(data.message || 'Izin akses ditolak (403).');
+      if (response.status === 404) throw new Error(data.message || 'Endpoint tidak ditemukan (404).');
+      if (response.status === 500) throw new Error(data.message || 'Terjadi kesalahan internal pada server (500).');
+
+      throw new Error(data.message || data.error || `Kesalahan sistem (${response.status})`);
     }
 
     return data;

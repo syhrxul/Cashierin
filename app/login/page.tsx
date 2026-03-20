@@ -12,54 +12,92 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // If we have a token, we should probably be in dashboard
+    setMounted(true);
+    // Silent check for token to avoid loops while still helping legitimate users
     const token = localStorage.getItem('token');
-    if (token) {
-      router.replace('/dashboard');
+    if (token && window.location.pathname === '/login') {
+      // Don't auto-redirect if there's an error message showing
+      if (!error) {
+        router.replace('/dashboard');
+      }
     }
-  }, [router]);
+  }, [router, error]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  if (!mounted) return <div className="min-h-screen bg-[#F8FAFC]" />;
+
+  const handleSubmit = async (e?: React.FormEvent | React.MouseEvent | React.KeyboardEvent) => {
+    if (e && e.preventDefault) e.preventDefault();
     setLoading(true);
     setError(null);
+    setIsRedirecting(false);
 
     try {
-      console.log('Sending LOGIN with login_id:', login_id);
+      console.log('[Login] Attempting login for:', login_id);
 
-      const data = await apiFetch('/login', {
+      const res: any = await apiFetch('/login', {
         method: 'POST',
         body: JSON.stringify({ login_id, password }),
       });
 
-      console.log('LOGIN success response:', data);
+      console.log('[Login] Response received:', res);
 
-      if (data.token) {
-        // Essential: Set items in localStorage BEFORE redirecting
-        localStorage.setItem('token', data.token);
+      // Robust data normalization
+      const data = res.data || res;
+      let token = data.token || data.access_token;
 
-        const userData = data.user || { name: login_id.split('@')[0], role: 'superadmin' };
+      if (token) {
+        // Strip 'Bearer ' prefix if the backend accidentally provides it
+        if (typeof token === 'string' && token.startsWith('Bearer ')) {
+          token = token.replace('Bearer ', '');
+        }
+
+        // 1. Storage - Selective clear to avoid disrupting other app state
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+
+        // Ensure write is synchronous before continuing
+        localStorage.setItem('token', token);
+
+        // Unwrap user data
+        const rawUser = data.user?.data || data.user;
+        const userData = rawUser || {
+          name: login_id.split('@')[0],
+          role: data.role || 'superadmin',
+          approval_status: data.approval_status || 'approved'
+        };
+
         localStorage.setItem('user', JSON.stringify(userData));
 
-        console.log('Credentials stored. Redirecting now...');
+        // 2. Visual Feedback - Important for slow redirects
+        setIsRedirecting(true);
+        console.log('[Login] Storage sync complete. Redirecting...');
 
-        // Use window.location for hard redirect to clear state and ensure dashboard picks up token
-        window.location.href = '/dashboard';
+        // 3. Redirection - Safari specific handling
+        // We use window.location.href for a clean state, and wrapped in a tiny timeout
+        // to ensure the browser has finished writing to localStorage and closing the fetch.
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 150);
+
+        return;
       } else {
-        throw new Error('Server tidak memberikan token akses.');
+        console.error('[Login] Missing token in response:', data);
+        throw new Error('Server tidak memberikan token akses yang valid.');
       }
     } catch (err: any) {
-      console.error('LOGIN process failed:', err);
+      console.error('[Login] Error:', err);
       setError(err.message || 'Login gagal. Sila periksa kembali kredensial Anda.');
-    } finally {
       setLoading(false);
+      setIsRedirecting(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen font-inter">
+    <div className="flex min-h-screen font-inter text-[#0F172A]">
       {/* Left Decoration - Minimalist Professional */}
       <div className="hidden lg:flex w-1/2 bg-[#4F46E5] p-24 items-center justify-center relative overflow-hidden">
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-white opacity-5 rounded-full -translate-y-1/2 translate-x-1/2" />
@@ -98,12 +136,19 @@ export default function LoginPage() {
 
           {error && (
             <div className="mb-8 p-4 bg-rose-50 border border-rose-100 text-rose-600 text-sm rounded-xl font-bold flex items-center gap-3">
-              <AlertCircle size={20} />
-              {error}
+              <AlertCircle size={20} className="shrink-0" />
+              <span>{error}</span>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          {isRedirecting && (
+            <div className="mb-8 p-4 bg-emerald-50 border border-emerald-100 text-emerald-600 text-sm rounded-xl font-bold flex items-center gap-3 animate-pulse">
+              <Loader2 size={20} className="animate-spin" />
+              <span>Login berhasil! Mengarahkan ke dashboard...</span>
+            </div>
+          )}
+
+          <div className="space-y-6">
             <div className="space-y-2 group">
               <label
                 htmlFor="login_id"
@@ -121,9 +166,10 @@ export default function LoginPage() {
                   autoComplete="username"
                   value={login_id}
                   onChange={(e) => setLoginId(e.target.value)}
-                  className="w-full h-14 pl-12 pr-4 bg-white border border-[#E2E8F0] rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-[#4F46E5] outline-none transition-all text-sm font-bold placeholder:text-[#CBD5E1] placeholder:font-normal"
-                  placeholder="admin@cashierin.com"
-                  required
+                  onKeyUp={(e) => e.key === 'Enter' && handleSubmit(e as any)}
+                  className="w-full h-14 pl-12 pr-4 bg-white border border-[#E2E8F0] rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-[#4F46E5] outline-none transition-all text-sm font-bold placeholder:text-[#CBD5E1] placeholder:font-normal text-[#0F172A]"
+                  placeholder="user@cashierin.com"
+                  disabled={loading || isRedirecting}
                 />
               </div>
             </div>
@@ -148,28 +194,29 @@ export default function LoginPage() {
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full h-14 pl-12 pr-4 bg-white border border-[#E2E8F0] rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-[#4F46E5] outline-none transition-all text-sm font-bold placeholder:text-[#CBD5E1] placeholder:font-normal"
+                  onKeyUp={(e) => e.key === 'Enter' && handleSubmit(e as any)}
+                  className="w-full h-14 pl-12 pr-4 bg-white border border-[#E2E8F0] rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-[#4F46E5] outline-none transition-all text-sm font-bold placeholder:text-[#CBD5E1] placeholder:font-normal text-[#0F172A]"
                   placeholder="••••••••"
-                  required
+                  disabled={loading || isRedirecting}
                 />
               </div>
             </div>
 
             <button
-              type="submit"
-              disabled={loading}
+              onClick={handleSubmit}
+              disabled={loading || isRedirecting}
               className="w-full h-14 bg-[#4F46E5] text-white font-black rounded-2xl hover:bg-[#4338CA] active:scale-[0.98] transition-all flex items-center justify-center gap-3 shadow-2xl shadow-indigo-100 disabled:bg-indigo-300 disabled:shadow-none text-lg mt-8"
             >
-              {loading ? (
+              {(loading || isRedirecting) ? (
                 <>
                   <Loader2 className="animate-spin" size={22} />
-                  <span>Memverifikasi...</span>
+                  <span>{isRedirecting ? 'Mengarahkan...' : 'Memverifikasi...'}</span>
                 </>
               ) : (
                 'Masuk Sekarang'
               )}
             </button>
-          </form>
+          </div>
 
           <p className="mt-12 text-center text-sm text-[#64748B] font-medium">
             Belum punya akun bisnis?{' '}
