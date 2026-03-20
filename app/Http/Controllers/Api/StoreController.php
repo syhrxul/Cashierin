@@ -262,6 +262,27 @@ class StoreController extends Controller
                 'grace_period_ends_at' => $store->grace_period_ends_at,
                 'license_days_remaining' => $store->licenseDaysRemaining(),
                 'grace_period_days_remaining' => $store->gracePeriodDaysRemaining(),
+                'address' => $store->address,
+                'business_hours' => $store->business_hours,
+                'business_category' => $store->business_category,
+                'is_manual_frozen' => $store->is_manual_frozen,
+            ]
+        ]);
+    }
+
+    /**
+     * Lihat statistik ringkas penggunaan toko (untuk owner).
+     */
+    public function ownerStoreStats(Request $request)
+    {
+        $user = $request->user();
+        $store = Store::findOrFail($user->store_id);
+
+        return response()->json([
+            'data' => [
+                'total_products' => $store->products()->count(),
+                'total_employees' => $store->users()->where('role', '!=', 'owner')->count(),
+                'total_transactions' => $store->transactions()->count(),
             ]
         ]);
     }
