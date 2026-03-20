@@ -199,4 +199,44 @@ class StoreController extends Controller
             'invite_code' => $newCode,
         ]);
     }
+
+    /**
+     * Bekukan atau cairkan toko — hanya superadmin.
+     */
+    public function toggleFreeze(Request $request, string $id)
+    {
+        $user = $request->user();
+
+        if ($user->role !== 'superadmin') {
+            return response()->json([
+                'message' => 'Hanya superadmin yang dapat membekukan toko.'
+            ], 403);
+        }
+
+        $store = Store::findOrFail($id);
+        
+        if ($store->status === 'frozen') {
+            // Jika sebelumnya frozen, tanyakan status terbaru (bisa kembali ke active atau grace_period)
+            $store->status = 'active'; 
+            $message = 'Toko berhasil dicairkan (Status: Active).';
+            
+            // Re-check status based on license
+            $store->checkAndUpdateLicenseStatus();
+        } else {
+            $store->status = 'frozen';
+            $message = 'Toko berhasil dibekukan.';
+        }
+
+        $store->save();
+
+        ActivityLog::log('store_status_toggled', "Status toko '{$store->name}' diubah menjadi {$store->status} oleh @{$user->username}", [
+            'store_id' => $store->id,
+            'new_status' => $store->status
+        ]);
+
+        return response()->json([
+            'message' => $message,
+            'data' => $store
+        ]);
+    }
 }

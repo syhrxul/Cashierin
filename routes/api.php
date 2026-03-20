@@ -59,6 +59,7 @@ Route::middleware(['auth:sanctum', 'superadmin', 'throttle:api'])->prefix('super
 
     // Store management
     Route::apiResource('stores', StoreController::class)->names('superadmin.stores');
+    Route::post('/stores/{id}/toggle-freeze', [StoreController::class, 'toggleFreeze']);
 });
 
 // Routes that only require approval but not yet a store (initial setup)
