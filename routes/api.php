@@ -39,20 +39,19 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
 // SUPER ADMIN ROUTES
 // =============================================
 Route::middleware(['auth:sanctum', 'superadmin', 'throttle:api'])->prefix('superadmin')->group(function () {
-    Route::get('/activity-history', [\App\Http\Controllers\Api\SuperAdminController::class, 'logs']);
-    Route::get('/dashboard', [\App\Http\Controllers\Api\SuperAdminController::class, 'dashboard']);
+    Route::get('/activity-history', [SuperadminController::class, 'logs']);
+    Route::get('/dashboard', [SuperadminController::class, 'dashboard']);
     // User management
-    Route::get('/users', [\App\Http\Controllers\Api\SuperAdminController::class, 'listUsers']);
-    Route::get('/users/pending', [\App\Http\Controllers\Api\SuperAdminController::class, 'pendingUsers']);
-    Route::post('/users', [\App\Http\Controllers\Api\SuperAdminController::class, 'createUser']);
-    Route::put('/users/{id}', [\App\Http\Controllers\Api\SuperAdminController::class, 'updateUser']);
-    Route::delete('/users/{id}', [\App\Http\Controllers\Api\SuperAdminController::class, 'deleteUser']);
-    Route::post('/users/{id}/approve', [\App\Http\Controllers\Api\SuperAdminController::class, 'approveUser']);
-    Route::post('/users/{id}/reject', [\App\Http\Controllers\Api\SuperAdminController::class, 'rejectUser']);
-    Route::post('/users/{id}/change-password', [\App\Http\Controllers\Api\SuperAdminController::class, 'changePassword']);
-    Route::get('/users/{id}/toggle-status', [\App\Http\Controllers\Api\SuperAdminController::class, 'toggleUserStatus']);
-    Route::get('/users/{id}/toggle-status', [\App\Http\Controllers\Api\SuperAdminController::class, 'toggleUserStatus']);
-    Route::get('/pulse-stats', [\App\Http\Controllers\Api\SuperAdminController::class, 'pulseStats']);
+    Route::get('/users', [SuperadminController::class, 'listUsers']);
+    Route::get('/users/pending', [SuperadminController::class, 'pendingUsers']);
+    Route::post('/users', [SuperadminController::class, 'createUser']);
+    Route::put('/users/{id}', [SuperadminController::class, 'updateUser']);
+    Route::delete('/users/{id}', [SuperadminController::class, 'deleteUser']);
+    Route::post('/users/{id}/approve', [SuperadminController::class, 'approveUser']);
+    Route::post('/users/{id}/reject', [SuperadminController::class, 'rejectUser']);
+    Route::post('/users/{id}/change-password', [SuperadminController::class, 'changePassword']);
+    Route::get('/users/{id}/toggle-status', [SuperadminController::class, 'toggleUserStatus']);
+    Route::get('/pulse-stats', [SuperadminController::class, 'pulseStats']);
 
     // License keys
     Route::post('/license-keys', [LicenseKeyController::class, 'store']);
@@ -73,10 +72,6 @@ Route::middleware(['auth:sanctum', 'store.access', 'throttle:api'])->group(funct
     Route::get('/store/info', [StoreController::class, 'ownerStoreInfo']);
     Route::post('/store/update', [StoreController::class, 'updateStore']);
     Route::get('/owner/stats', [StoreController::class, 'ownerStoreStats']);
-    // Superadmin Specific Routes
-    Route::group(['prefix' => 'superadmin'], function () {
-        Route::get('/dashboard', [SuperadminController::class, 'dashboard']);
-    });
 
     Route::get('/owner/dashboard', [StoreController::class, 'ownerDashboard']);
     Route::post('/license/activate', [LicenseKeyController::class, 'activate']);
