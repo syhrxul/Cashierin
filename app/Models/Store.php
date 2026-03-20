@@ -15,12 +15,14 @@ class Store extends Model
         'business_category',
         'invite_code',
         'status',
+        'is_manual_frozen',
         'license_type',
         'license_expires_at',
         'grace_period_ends_at',
     ];
 
     protected $casts = [
+        'is_manual_frozen' => 'boolean',
         'license_expires_at' => 'datetime',
         'grace_period_ends_at' => 'datetime',
     ];
@@ -45,7 +47,7 @@ class Store extends Model
      */
     public function isActive(): bool
     {
-        return in_array($this->status, ['active', 'grace_period']);
+        return in_array($this->status, ['active', 'grace_period']) && !$this->is_manual_frozen;
     }
 
     /**
@@ -53,7 +55,7 @@ class Store extends Model
      */
     public function isInGracePeriod(): bool
     {
-        return $this->status === 'grace_period';
+        return $this->status === 'grace_period' && !$this->is_manual_frozen;
     }
 
     /**
@@ -61,7 +63,7 @@ class Store extends Model
      */
     public function isFrozen(): bool
     {
-        return $this->status === 'frozen';
+        return $this->status === 'frozen' || $this->is_manual_frozen;
     }
 
     /**
@@ -70,6 +72,14 @@ class Store extends Model
      */
     public function checkAndUpdateLicenseStatus(): string
     {
+        // PRIORITAS: Manual Freeze (Admin Action)
+        if ($this->is_manual_frozen) {
+            if ($this->status !== 'frozen') {
+                $this->update(['status' => 'frozen']);
+            }
+            return 'frozen';
+        }
+
         // Toko tanpa lisensi = inactive
         if ($this->license_type === 'none') {
             if ($this->status !== 'inactive') {

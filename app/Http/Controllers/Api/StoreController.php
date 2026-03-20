@@ -215,19 +215,16 @@ class StoreController extends Controller
 
         $store = Store::findOrFail($id);
         
-        if ($store->status === 'frozen') {
-            // Jika sebelumnya frozen, tanyakan status terbaru (bisa kembali ke active atau grace_period)
-            $store->status = 'active'; 
-            $message = 'Toko berhasil dicairkan (Status: Active).';
-            
-            // Re-check status based on license
-            $store->checkAndUpdateLicenseStatus();
-        } else {
-            $store->status = 'frozen';
-            $message = 'Toko berhasil dibekukan.';
-        }
-
+        // Toggle Manual Freeze
+        $store->is_manual_frozen = !$store->is_manual_frozen;
+        
+        // Update status for consistency
+        // If manually frozen, status is 'frozen'. Otherwise, let the license status determine it.
+        $store->status = $store->is_manual_frozen ? 'frozen' : $store->checkAndUpdateLicenseStatus();
+        
         $store->save();
+
+        $message = $store->is_manual_frozen ? 'Toko berhasil dibekukan secara manual.' : 'Pembekuan toko berhasil dibatalkan.';
 
         ActivityLog::log('store_status_toggled', "Status toko '{$store->name}' diubah menjadi {$store->status} oleh @{$user->username}", [
             'store_id' => $store->id,
