@@ -10,8 +10,8 @@ use App\Models\LicenseKey;
 use App\Models\Transaction;
 use App\Models\Product;
 use Illuminate\Http\Request;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class SuperadminController extends Controller
 {
@@ -68,8 +68,8 @@ class SuperadminController extends Controller
                         'products' => $totalProducts,
                     ],
                     'license' => [
-                        'total_keys' => $licenseStats->total_keys,
-                        'used_keys' => $licenseStats->used_keys,
+                        'total_keys' => $licenseStats->total_keys ?? 0,
+                        'used_keys' => $licenseStats->used_keys ?? 0,
                     ]
                 ],
                 'latest_stores' => $latestStores
@@ -79,8 +79,12 @@ class SuperadminController extends Controller
 
     public function listUsers()
     {
+        // Mendapatkan semua user dengan relasi toko untuk superadmin dashboard
         $users = User::with('store')->latest()->get();
-        return response()->json(['status' => 'success', 'data' => $users]);
+        return response()->json([
+            'status' => 'success',
+            'data' => $users
+        ]);
     }
 
     public function pendingUsers()
