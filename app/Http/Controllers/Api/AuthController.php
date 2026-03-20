@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use App\Http\Resources\UserResource;
+use App\Models\ActivityLog;
 
 class AuthController extends Controller
 {
@@ -32,6 +33,11 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
             'role' => 'owner',
             'approval_status' => 'pending',
+        ]);
+
+        ActivityLog::log('register', "Pendaftaran Owner baru: {$user->name} (@{$user->username})", [
+            'user_id' => $user->id,
+            'role' => 'owner'
         ]);
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -74,6 +80,12 @@ class AuthController extends Controller
             'approved_at' => now(),
         ]);
 
+        ActivityLog::log('register_invite', "Kasir baru bergabung ke toko '{$store->name}': {$user->name}", [
+            'user_id' => $user->id,
+            'store_id' => $store->id,
+            'role' => 'kasir'
+        ]);
+
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
@@ -102,17 +114,28 @@ class AuthController extends Controller
         })->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
+            ActivityLog::log('login_failed', "Gagal login untuk ID: {$request->login_id}", [
+                'login_id' => $request->login_id
+            ]);
             throw ValidationException::withMessages([
                 'login_id' => ['Kredensial yang diberikan salah.'],
             ]);
         }
 
         if ($user->approval_status === 'rejected') {
+            ActivityLog::log('login_blocked', "Login ditolak untuk user Rejected: {$user->name}", [
+                'user_id' => $user->id
+            ]);
             return response()->json([
                 'message' => 'Akun Anda telah ditolak. Hubungi admin.',
                 'approval_status' => 'rejected',
             ], 403);
         }
+
+        ActivityLog::log('login', "User '{$user->name}' berhasil masuk ke sistem.", [
+            'user_id' => $user->id,
+            'role' => $user->role
+        ]);
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
@@ -142,7 +165,11 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        $user = $request->user();
+        ActivityLog::log('logout', "User '{$user->name}' keluar dari sistem.", [
+            'user_id' => $user->id
+        ]);
+        $user->currentAccessToken()->delete();
         return response()->json(['message' => 'Berhasil logout']);
     }
 }

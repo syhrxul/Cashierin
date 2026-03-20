@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Store;
 use Illuminate\Http\Request;
 
+use App\Models\ActivityLog;
+
 class StoreController extends Controller
 {
     /**
@@ -67,6 +69,11 @@ class StoreController extends Controller
         if ($owner && !$owner->store_id) {
             $owner->update(['store_id' => $store->id]);
         }
+
+        ActivityLog::log('store_created', "Toko baru berhasil dibuat: '{$store->name}' oleh @{$user->username}", [
+            'store_id' => $store->id,
+            'owner_id' => $owner->id
+        ]);
 
         return response()->json([
             'message' => 'Toko berhasil dibuat.',

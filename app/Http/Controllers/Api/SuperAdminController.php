@@ -10,6 +10,8 @@ use Illuminate\Validation\Rules\Password;
 use Laravel\Pulse\Facades\Pulse;
 use Illuminate\Support\Facades\DB;
 
+use App\Models\ActivityLog;
+
 class SuperAdminController extends Controller
 {
     /**
@@ -69,6 +71,7 @@ class SuperAdminController extends Controller
     public function approveUser(Request $request, string $id)
     {
         $user = User::findOrFail($id);
+        $admin = $request->user();
 
         if ($user->approval_status === 'approved') {
             return response()->json(['message' => 'User sudah disetujui sebelumnya.'], 400);
@@ -76,8 +79,13 @@ class SuperAdminController extends Controller
 
         $user->update([
             'approval_status' => 'approved',
-            'approved_by' => $request->user()->id,
+            'approved_by' => $admin->id,
             'approved_at' => now(),
+        ]);
+
+        ActivityLog::log('user_approved', "SuperAdmin '{$admin->name}' menyetujui akun '{$user->name}' (@{$user->username}).", [
+            'target_user_id' => $user->id,
+            'admin_id' => $admin->id
         ]);
 
         return response()->json([
@@ -92,6 +100,7 @@ class SuperAdminController extends Controller
     public function rejectUser(Request $request, string $id)
     {
         $user = User::findOrFail($id);
+        $admin = $request->user();
 
         if ($user->approval_status === 'rejected') {
             return response()->json(['message' => 'User sudah ditolak sebelumnya.'], 400);
@@ -99,8 +108,13 @@ class SuperAdminController extends Controller
 
         $user->update([
             'approval_status' => 'rejected',
-            'approved_by' => $request->user()->id,
+            'approved_by' => $admin->id,
             'approved_at' => now(),
+        ]);
+
+        ActivityLog::log('user_rejected', "SuperAdmin '{$admin->name}' MENOLAK pendaftaran akun '{$user->name}' (@{$user->username}).", [
+            'target_user_id' => $user->id,
+            'admin_id' => $admin->id
         ]);
 
         $user->tokens()->delete();
@@ -275,6 +289,30 @@ class SuperAdminController extends Controller
         return response()->json([
             'period' => $period,
             'data' => $stats
+        ]);
+    }
+
+    /**
+     * Get all activity logs.
+     */
+    public function logs(Request $request)
+    {
+        $query = ActivityLog::with(['user', 'store']);
+
+        if ($request->has('event')) {
+            $query->where('event', $request->event);
+        }
+
+        if ($request->has('user_id')) {
+            $query->where('user_id', $request->user_id);
+        }
+
+        if ($request->has('store_id')) {
+            $query->where('store_id', $request->store_id);
+        }
+
+        return response()->json([
+            'data' => $query->latest()->paginate($request->get('limit', 50))
         ]);
     }
 

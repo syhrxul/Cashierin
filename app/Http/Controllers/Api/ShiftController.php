@@ -7,6 +7,8 @@ use App\Models\Shift;
 use App\Models\User;
 use Illuminate\Http\Request;
 
+use App\Models\ActivityLog;
+
 class ShiftController extends Controller
 {
     /**
@@ -82,9 +84,16 @@ class ShiftController extends Controller
             'notes' => $request->notes, // Bisa berisi detail "Mentions"
         ]);
 
+        $assignedTo = User::find($targetUserId);
+        ActivityLog::log('shift_opened', "Shift dibuka untuk '{$assignedTo->name}' oleh '{$user->name}'", [
+            'shift_id' => $shift->id,
+            'user_id' => $assignedTo->id,
+            'starting_cash' => $request->starting_cash
+        ]);
+
         return response()->json([
             'message' => 'Shift berhasil dibuka.',
-            'assigned_to' => User::find($targetUserId)->name,
+            'assigned_to' => $assignedTo->name,
             'data' => $shift
         ], 201);
     }
@@ -165,6 +174,11 @@ class ShiftController extends Controller
             'ending_cash' => $request->ending_cash,
             'ended_at' => now(),
             'status' => 'closed',
+        ]);
+
+        ActivityLog::log('shift_closed', "Shift ditutup oleh '{$user->name}' dengan uang akhir Rp " . number_format($request->ending_cash, 0, ',', '.'), [
+            'shift_id' => $shift->id,
+            'ending_cash' => $request->ending_cash
         ]);
 
         return response()->json([
