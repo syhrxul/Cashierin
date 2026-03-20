@@ -5,6 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+use Exception;
+use Illuminate\Support\Facades\Log;
+
 class ActivityLog extends Model
 {
     protected $fillable = [
@@ -36,20 +39,24 @@ class ActivityLog extends Model
      */
     public static function log(string $event, string $description, array $properties = []): void
     {
-        $user = auth()->user();
-        $request = request();
+        try {
+            $user = auth()->user();
+            $request = request();
 
-        static::create([
-            'user_id'     => $user?->id,
-            'store_id'    => $user?->store_id, // can be overridden by properties if needed
-            'event'       => $event,
-            'description' => $description,
-            'properties'  => array_merge([
-                'method' => $request->method(),
-                'url'    => $request->fullUrl(),
-            ], $properties),
-            'ip_address'  => $request->ip(),
-            'user_agent'  => $request->userAgent(),
-        ]);
+            static::create([
+                'user_id'     => $user?->id,
+                'store_id'    => $user?->store_id, // can be overridden by properties if needed
+                'event'       => $event,
+                'description' => $description,
+                'properties'  => array_merge([
+                    'method' => $request->method(),
+                    'url'    => $request->fullUrl(),
+                ], $properties),
+                'ip_address'  => $request->ip(),
+                'user_agent'  => $request->userAgent(),
+            ]);
+        } catch (Exception $e) {
+            Log::error("Activity Log Error: " . $e->getMessage());
+        }
     }
 }
