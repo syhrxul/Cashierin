@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\SuperadminController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -72,6 +73,11 @@ Route::middleware(['auth:sanctum', 'store.access', 'throttle:api'])->group(funct
     Route::get('/store/info', [StoreController::class, 'ownerStoreInfo']);
     Route::post('/store/update', [StoreController::class, 'updateStore']);
     Route::get('/owner/stats', [StoreController::class, 'ownerStoreStats']);
+    // Superadmin Specific Routes
+    Route::group(['prefix' => 'superadmin'], function () {
+        Route::get('/dashboard', [SuperadminController::class, 'dashboard']);
+    });
+
     Route::get('/owner/dashboard', [StoreController::class, 'ownerDashboard']);
     Route::post('/license/activate', [LicenseKeyController::class, 'activate']);
 });
