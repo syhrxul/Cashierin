@@ -318,7 +318,14 @@ class StoreController extends Controller
             return response()->json(['message' => 'Toko belum didaftarkan.'], 404);
         }
 
-        $store = Store::findOrFail($user->store_id);
+        $store = Store::find($user->store_id);
+
+        if (!$store) {
+            // Jika toko sudah dihapus secara fisik, bersihkan store_id user agar bisa setup ulang
+            // Karena ini di Mac, pastikan model User benar-benar di-update
+            $user->update(['store_id' => null]);
+            return response()->json(['message' => 'Toko tidak ditemukan atau sudah dihapus. Silakan setup toko baru.'], 404);
+        }
 
         return response()->json([
             'data' => [
