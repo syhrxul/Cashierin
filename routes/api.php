@@ -59,6 +59,11 @@ Route::middleware(['auth:sanctum', 'superadmin', 'throttle:api'])->prefix('super
     Route::apiResource('stores', StoreController::class)->names('superadmin.stores');
 });
 
+// Routes that only require approval but not yet a store (initial setup)
+Route::middleware(['auth:sanctum', 'approved', 'throttle:api'])->group(function() {
+    Route::post('/stores', [StoreController::class, 'store']);
+});
+
 // =============================================
 // STORE-SCOPED ROUTES
 // =============================================
@@ -66,7 +71,7 @@ Route::middleware(['auth:sanctum', 'store.access', 'store.license', 'throttle:ap
     // Store management
     Route::get('/store/invite-code', [StoreController::class, 'inviteCode']);
     Route::post('/store/regenerate-invite-code', [StoreController::class, 'regenerateInviteCode']);
-    Route::apiResource('stores', StoreController::class);
+    Route::apiResource('stores', StoreController::class)->except(['store']);
 
     // User management (per toko)
     Route::get('/users/pending-approvals', [UserController::class, 'pendingApprovals']);
