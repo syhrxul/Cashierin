@@ -72,6 +72,7 @@ Route::middleware(['auth:sanctum', 'store.access', 'throttle:api'])->group(funct
     Route::get('/store/info', [StoreController::class, 'ownerStoreInfo']);
     Route::post('/store/update', [StoreController::class, 'updateStore']);
     Route::get('/owner/stats', [StoreController::class, 'ownerStoreStats']);
+    Route::get('/owner/dashboard', [StoreController::class, 'ownerDashboard']);
     Route::post('/license/activate', [LicenseKeyController::class, 'activate']);
 });
 

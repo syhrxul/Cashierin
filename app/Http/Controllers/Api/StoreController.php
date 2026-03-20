@@ -309,4 +309,25 @@ class StoreController extends Controller
             'data' => $store
         ]);
     }
+
+    
+    public function ownerDashboard(Request $request)
+    {
+        $user = $request->user();
+        if (!$user->store_id) {
+            return response()->json(['message' => 'Toko belum didaftarkan.'], 404);
+        }
+
+        $store = Store::findOrFail($user->store_id);
+
+        return response()->json([
+            'data' => [
+                'today_revenue' => (int) $store->transactions()->whereDate('created_at', now())->sum('total_amount'),
+                'total_inventory' => $store->products()->count(),
+                'active_employees' => $store->users()->where('role', '!=', 'owner')->count(),
+                // 'pending_orders' => 0, // Placeholder jika butuh
+                'popular_products' => $store->products()->withCount('transactions')->orderBy('transactions_count', 'desc')->take(5)->get(),
+            ]
+        ]);
+    }
 }
