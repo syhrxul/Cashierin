@@ -37,7 +37,7 @@ class AuthController extends Controller
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'message' => 'Registrasi berhasil. Akun Anda perlu disetujui oleh Super Admin sebelum dapat digunakan.',
+            'message' => 'Registrasi berhasil. Akun Anda perlu disetujui Administrator sebelum dapat membuat toko.',
             'user' => new UserResource($user),
             'token' => $token,
             'approval_status' => 'pending',
@@ -70,16 +70,17 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
             'role' => 'kasir',
             'store_id' => $store->id,
-            'approval_status' => 'pending',
+            'approval_status' => 'approved',
+            'approved_at' => now(),
         ]);
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'message' => "Registrasi berhasil untuk toko '{$store->name}'. Akun Anda perlu disetujui oleh owner toko.",
+            'message' => "Registrasi berhasil untuk toko '{$store->name}'. Akun Anda telah aktif dan dapat langsung digunakan.",
             'user' => new UserResource($user),
             'token' => $token,
-            'approval_status' => 'pending',
+            'approval_status' => 'approved',
             'store_name' => $store->name,
         ], 201);
     }
