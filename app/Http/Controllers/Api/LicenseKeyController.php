@@ -130,7 +130,8 @@ class LicenseKeyController extends Controller
             ], 403);
         }
 
-        $licenseKey = LicenseKey::where('key', $request->key)->first();
+        $inputKey = strtoupper(trim($request->input('key')));
+        $licenseKey = LicenseKey::where('key', $inputKey)->first();
 
         if (!$licenseKey) {
             return response()->json([
