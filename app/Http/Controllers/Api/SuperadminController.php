@@ -118,4 +118,47 @@ class SuperadminController extends Controller
             'data'    => $user
         ], 201);
     }
+
+    public function updateUser(Request $request, string $id)
+    {
+        $user = User::findOrFail($id);
+        
+        $request->validate([
+            'name'     => 'sometimes|string|max:255',
+            'email'    => 'sometimes|email|unique:users,email,'.$user->id,
+            'role'     => 'sometimes|in:superadmin,owner,manager,kasir',
+            'password' => 'nullable|min:8',
+        ]);
+
+        $data = $request->only(['name', 'email', 'role']);
+        
+        if ($request->filled('password')) {
+            $data['password'] = \Illuminate\Support\Facades\Hash::make($request->password);
+        }
+
+        $user->update($data);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Data user berhasil diperbarui.',
+            'data'    => $user->fresh()
+        ]);
+    }
+
+    public function deleteUser(Request $request, string $id)
+    {
+        $user = User::findOrFail($id);
+
+        // Jangan biarkan hapus diri sendiri
+        if ($request->user()->id === $user->id) {
+            return response()->json(['message' => 'Tidak dapat menghapus diri sendiri.'], 422);
+        }
+
+        $user->delete();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'User berhasil dihapus.'
+        ]);
+    }
 }
