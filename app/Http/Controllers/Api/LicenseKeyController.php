@@ -135,8 +135,9 @@ class LicenseKeyController extends Controller
             'received_key' => $request->all(),
             'parsed_key' => $inputKey
         ]);
-        // Menggunakan query mentah untuk menghindari konflik kata kunci 'key' dan masalah collation
-        $licenseKey = LicenseKey::whereRaw("BINARY `key` = ?", [$inputKey])->first();
+        // Menggunakan withoutGlobalScopes() karena kunci baru biasanya punya store_id = null
+        // dan trait BelongsToStore akan memfilternya secara otomatis.
+        $licenseKey = LicenseKey::withoutGlobalScopes()->whereRaw("BINARY `key` = ?", [$inputKey])->first();
 
         if (!$licenseKey) {
             return response()->json([
