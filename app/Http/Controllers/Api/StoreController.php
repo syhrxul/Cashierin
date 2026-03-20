@@ -286,4 +286,27 @@ class StoreController extends Controller
             ]
         ]);
     }
+
+    /**
+     * Update data toko (khusus owner/manager toko ini).
+     */
+    public function updateStore(Request $request)
+    {
+        $user = $request->user();
+        $store = Store::findOrFail($user->store_id);
+
+        $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'address' => 'nullable|string|max:500',
+            'business_hours' => 'nullable|string|max:255',
+            'business_category' => 'nullable|string|max:255',
+        ]);
+
+        $store->update($request->only(['name', 'address', 'business_hours', 'business_category']));
+
+        return response()->json([
+            'message' => 'Informasi toko berhasil diperbarui.',
+            'data' => $store
+        ]);
+    }
 }

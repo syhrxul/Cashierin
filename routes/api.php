@@ -70,7 +70,7 @@ Route::middleware(['auth:sanctum', 'approved', 'throttle:api'])->group(function(
 // Routes that require store access but can be seen even if license is expired (for renewal/info)
 Route::middleware(['auth:sanctum', 'store.access', 'throttle:api'])->group(function () {
     Route::get('/store/info', [StoreController::class, 'ownerStoreInfo']);
-    Route::post('/store/update', [StoreController::class, 'update']); // Use existing update method but with store_id logic
+    Route::post('/store/update', [StoreController::class, 'updateStore']);
     Route::get('/owner/stats', [StoreController::class, 'ownerStoreStats']);
     Route::post('/license/activate', [LicenseKeyController::class, 'activate']);
 });
