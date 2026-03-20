@@ -173,6 +173,12 @@ class SuperAdminController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
+        $admin = $request->user();
+        ActivityLog::log('password_reset', "SuperAdmin '{$admin->name}' telah mereset passsword untuk user '{$user->name}' (@{$user->username}).", [
+            'target_user_id' => $user->id,
+            'admin_id' => $admin->id
+        ]);
+
         $user->tokens()->delete();
 
         return response()->json([
