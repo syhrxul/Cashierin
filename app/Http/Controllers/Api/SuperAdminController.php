@@ -73,4 +73,19 @@ class SuperadminController extends Controller
             ]
         ]);
     }
+
+    public function listUsers()
+    {
+        $users = User::with('store')->latest()->get();
+        return response()->json(['status' => 'success', 'data' => $users]);
+    }
+
+    public function pendingUsers()
+    {
+        $users = User::where('approval_status', 'pending')
+                    ->orWhereNull('approval_status')
+                    ->latest()
+                    ->get();
+        return response()->json(['status' => 'success', 'data' => $users]);
+    }
 }
