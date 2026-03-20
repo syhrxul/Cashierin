@@ -131,7 +131,8 @@ class LicenseKeyController extends Controller
         }
 
         $inputKey = strtoupper(trim($request->input('key')));
-        $licenseKey = LicenseKey::where('key', $inputKey)->first();
+        // Menggunakan query mentah untuk menghindari konflik kata kunci 'key' dan masalah collation
+        $licenseKey = LicenseKey::whereRaw("BINARY `key` = ?", [$inputKey])->first();
 
         if (!$licenseKey) {
             return response()->json([
