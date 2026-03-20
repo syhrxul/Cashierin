@@ -61,6 +61,7 @@ class SuperadminController extends Controller
                         'total' => $totalUserCount,
                         'owners' => $totalOwners,
                         'staff' => $totalStaff,
+                        'total_rejected' => User::where('approval_status', 'rejected')->count(),
                     ],
                     'volume' => [
                         'transactions' => $totalTransactions,
