@@ -297,6 +297,8 @@ class SuperAdminController extends Controller
      */
     public function logs(Request $request)
     {
+        ActivityLog::log('dashboard_view', "SuperAdmin '{$request->user()->name}' memantau log aktivitas sistem.");
+        
         $query = ActivityLog::with(['user', 'store']);
 
         if ($request->has('event')) {
