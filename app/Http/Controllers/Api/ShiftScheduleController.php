@@ -33,7 +33,7 @@ class ShiftScheduleController extends Controller
 
         return response()->json([
             'data' => $query->orderBy('start_time', 'desc')->get(),
-            'store' => \App\Models\Store::find($request->store_id)
+            'store' => \App\Models\Store::find($request->store_id ?? $request->user()->store_id)
         ]);
     }
 
