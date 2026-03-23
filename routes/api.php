@@ -81,7 +81,7 @@ Route::middleware(['auth:sanctum', 'store.access', 'throttle:api'])->group(funct
 // =============================================
 // STORE-SCOPED ROUTES (Requires Active/Grace License)
 // =============================================
-Route::middleware(['auth:sanctum', 'store.access', 'store.license', 'throttle:api'])->group(function () {
+Route::middleware(['auth:sanctum', 'store.access', 'store.license', 'throttle:api', 'lastseen'])->group(function () {
     // Store management
     Route::get('/store/invite-code', [StoreController::class, 'inviteCode']);
     Route::post('/store/regenerate-invite-code', [StoreController::class, 'regenerateInviteCode']);

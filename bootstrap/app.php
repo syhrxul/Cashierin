@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'store.access' => \App\Http\Middleware\EnsureStoreAccess::class,
             'approved' => \App\Http\Middleware\EnsureApproved::class,
             'store.license' => \App\Http\Middleware\EnsureStoreLicense::class,
+            'lastseen' => \App\Http\Middleware\UpdateLastSeen::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

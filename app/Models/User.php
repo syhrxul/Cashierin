@@ -31,6 +31,7 @@ class User extends Authenticatable
         'approval_status',
         'approved_by',
         'approved_at',
+        'last_seen_at',
     ];
 
     /**
@@ -56,6 +57,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'approved_at' => 'datetime',
+            'last_seen_at' => 'datetime',
         ];
     }
 
