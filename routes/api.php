@@ -10,6 +10,8 @@ use App\Http\Controllers\Api\LicenseKeyController;
 use App\Http\Controllers\Api\StoreController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\ShiftScheduleController;
+use App\Http\Controllers\Api\ShiftTimeDefinitionController;
 
 // =============================================
 // PUBLIC ROUTES (Anti-Spam Login/Register)
@@ -106,10 +108,14 @@ Route::middleware(['auth:sanctum', 'store.access', 'store.license', 'throttle:ap
     Route::apiResource('shifts', \App\Http\Controllers\Api\ShiftController::class);
 
     // Shift Schedule routes
-    Route::post('/store/shift-limit', [\App\Http\Controllers\Api\ShiftScheduleController::class, 'updateLimit']);
-    Route::post('/shift-schedules/bulk-destroy', [\App\Http\Controllers\Api\ShiftScheduleController::class, 'bulkDestroy']);
-    Route::post('/shift-schedules/bulk-update', [\App\Http\Controllers\Api\ShiftScheduleController::class, 'bulkUpdate']);
-    Route::apiResource('shift-schedules', \App\Http\Controllers\Api\ShiftScheduleController::class);
+    Route::post('/store/shift-limit', [ShiftScheduleController::class, 'updateLimit']);
+    Route::post('/shift-schedules/bulk-destroy', [ShiftScheduleController::class, 'bulkDestroy']);
+    Route::post('/shift-schedules/bulk-update', [ShiftScheduleController::class, 'bulkUpdate']);
+    Route::post('/shift-schedules/generate', [ShiftScheduleController::class, 'generate']);
+    Route::apiResource('shift-schedules', ShiftScheduleController::class);
+
+    // Shift Templates (Definitions)
+    Route::apiResource('shift-templates', ShiftTimeDefinitionController::class);
 
     // Shift Request routes
     Route::post('/shift-requests/{id}/approve', [\App\Http\Controllers\Api\ShiftRequestController::class, 'approve']);

@@ -235,6 +235,11 @@ class Store extends Model
         return $this->hasMany(Transaction::class);
     }
 
+    public function shiftTimeDefinitions()
+    {
+        return $this->hasMany(ShiftTimeDefinition::class);
+    }
+
     public function licenseKeys()
     {
         return $this->hasMany(LicenseKey::class);

@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\ShiftSchedule;
+use App\Models\ShiftTimeDefinition;
+use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class ShiftScheduleController extends Controller
@@ -203,5 +206,97 @@ class ShiftScheduleController extends Controller
             ->delete();
 
         return response()->json(['message' => "{$deletedCount} jadwal shift berhasil dihapus."]);
+    }
+
+    public function generate(Request $request)
+    {
+        $user = $request->user();
+        if (!in_array($user->role, ['superadmin', 'owner', 'manager'])) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $request->validate([
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
+        ]);
+
+        $storeId = $user->store_id;
+        $definitions = ShiftTimeDefinition::where('store_id', $storeId)->get();
+        
+        if ($definitions->isEmpty()) {
+            return response()->json(['message' => 'Silakan buat template shift terlebih dahulu.'], 422);
+        }
+
+        $employeesByRole = User::where('store_id', $storeId)
+            ->where('role', '!=', 'owner')
+            ->where('approval_status', 'approved')
+            ->get()
+            ->groupBy(function($u) { return strtolower($u->role); });
+
+        $startDate = Carbon::parse($request->start_date);
+        $endDate = Carbon::parse($request->end_date);
+        $generatedCount = 0;
+
+        // Keep track of index per role to cycle through employees (Fairness)
+        $roleIndex = [];
+
+        for ($date = $startDate->copy(); $date->lte($endDate); $date->addDay()) {
+            foreach ($definitions as $def) {
+                $requirements = $def->requirements ?? []; // [{"role": "kasir", "count": 1}]
+                
+                // Parse definition times onto the current date
+                $shiftStart = $date->copy()->setTimeFromTimeString($def->start_time);
+                $shiftEnd = $date->copy()->setTimeFromTimeString($def->end_time);
+                
+                // If end_time is before start_time, it crosses to midnight
+                if ($shiftEnd->lt($shiftStart)) {
+                    $shiftEnd->addDay();
+                }
+
+                foreach ($requirements as $req) {
+                    $role = strtolower($req['role'] ?? '');
+                    $count = (int) ($req['count'] ?? 0);
+                    
+                    if (!$role || $count <= 0) continue;
+                    
+                    $availableEmployees = $employeesByRole->get($role);
+                    if (!$availableEmployees || $availableEmployees->isEmpty()) continue;
+
+                    if (!isset($roleIndex[$role])) $roleIndex[$role] = 0;
+
+                    for ($i = 0; $i < $count; $i++) {
+                        // Pick employee using round-robin
+                        $emp = $availableEmployees[$roleIndex[$role] % $availableEmployees->count()];
+                        $roleIndex[$role]++;
+
+                        // Check if already has a shift at this exact time (avoid duplicates)
+                        $exists = ShiftSchedule::where('user_id', $emp->id)
+                            ->where('start_time', $shiftStart)
+                            ->where('end_time', $shiftEnd)
+                            ->exists();
+
+                        if ($exists) continue;
+
+                        ShiftSchedule::create([
+                            'store_id' => $storeId,
+                            'user_id' => $emp->id,
+                            'start_time' => $shiftStart,
+                            'end_time' => $shiftEnd,
+                            'notes' => "Auto-generated from template: {$def->name}",
+                            'status' => 'scheduled',
+                            'created_by' => $user->id,
+                        ]);
+                        $generatedCount++;
+                    }
+                }
+            }
+        }
+
+        return response()->json([
+            'message' => "{$generatedCount} jadwal shift berhasil digenerate otomatis.",
+            'data' => [
+                'count' => $generatedCount
+            ]
+        ]);
     }
 }
