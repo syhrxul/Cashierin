@@ -333,7 +333,7 @@ class StoreController extends Controller
                 'total_inventory' => $store->products()->count(),
                 'active_employees' => $store->users()->where('role', '!=', 'owner')->count(),
                 // 'pending_orders' => 0, // Placeholder jika butuh
-                'popular_products' => $store->products()->withCount('transactions')->orderBy('transactions_count', 'desc')->take(5)->get(),
+                'popular_products' => $store->products()->withCount('transactionItems')->orderBy('transaction_items_count', 'desc')->take(5)->get(),
             ]
         ]);
     }
