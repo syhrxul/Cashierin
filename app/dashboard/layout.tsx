@@ -33,6 +33,41 @@ export default function DashboardLayout({
         const userData = JSON.parse(storedUser);
         setUser(userData);
 
+        // --- Role-Based Route Guard ---
+        const userRole = userData.role?.toLowerCase();
+        const pathParts = pathname.split('/');
+
+        // Ensure user is accessing their designated dashboard area
+        if (pathParts[1] === 'dashboard' && pathParts[2]) {
+          const targetSection = pathParts[2];
+
+          // 1. Superadmin area is strictly for superadmins
+          if (targetSection === 'superadmin' && userRole !== 'superadmin') {
+            router.replace(`/dashboard/${userRole === 'kasir' ? 'kasir' : userRole === 'owner' ? 'owner' : 'manager'}`);
+          }
+
+          // 2. Owner area is strictly for owners (and maybe managers if allowed, but here strictly for owner)
+          if (targetSection === 'owner' && userRole !== 'owner' && userRole !== 'superadmin') {
+            router.replace(`/dashboard/${userRole}`);
+          }
+
+          // 3. Manager area
+          if (targetSection === 'manager' && userRole !== 'manager' && userRole !== 'superadmin') {
+            router.replace(`/dashboard/${userRole}`);
+          }
+
+          // 4. Kasir area (POS) is usually accessible by Kasir, Manager, and Owner
+          if (targetSection === 'kasir' && !['kasir', 'owner', 'manager', 'superadmin'].includes(userRole)) {
+            router.replace('/login');
+          }
+
+          // 5. Special Case: Kasir role TRYING to access other things
+          if (userRole === 'kasir' && targetSection !== 'kasir') {
+            router.replace('/dashboard/kasir');
+          }
+        }
+        // --- End Guard ---
+
         // Fetch store info if owner/kasir to check lock status globally
         if (userData.role !== 'superadmin' && userData.store_id) {
           apiFetch('/store/info')
@@ -148,8 +183,8 @@ export default function DashboardLayout({
                   <h2 className="text-3xl font-black tracking-tighter text-[#0F172A]">Sistem Dibekukan</h2>
                   <p className="text-slate-500 font-medium leading-relaxed">
                     {user?.role === 'kasir'
-                      ? 'Operasional kasir dihentikan sementara karena lisensi toko telah berakhir. Silakan hubungi Owner untuk memperbarui lisensi.'
-                      : 'Masa lisensi toko Anda telah berakhir dan melewati batas toleransi 7 hari. Silakan hubungi Administrator untuk memperbarui lisensi.'}
+                      ? 'Operasional kasir dihentikan sementara karena masa aktif lisensi toko telah berakhir. Silakan hubungi Owner untuk proses perpanjangan.'
+                      : 'Lisensi toko Anda telah berakhir atau dibekukan oleh Admin. Silakan masukkan Serial Key baru melalui menu Pengaturan Lisensi untuk mengaktifkan kembali seluruh fitur secara instan.'}
                   </p>
                 </div>
 

@@ -37,7 +37,8 @@ export default function OwnerSettingsPage() {
     name: '',
     address: '',
     business_hours: '',
-    business_category: ''
+    business_category: '',
+    shift_limit_hours: 8 as any
   });
 
   const fetchData = async () => {
@@ -48,7 +49,7 @@ export default function OwnerSettingsPage() {
         apiFetch('/owner/stats')
       ]);
 
-      const info = infoRes.data;
+      const info = infoRes.data || infoRes;
       setStoreInfo(info);
       setStats(statsRes.data);
 
@@ -56,7 +57,8 @@ export default function OwnerSettingsPage() {
         name: info.name || '',
         address: info.address || '',
         business_hours: info.business_hours || '08:00 - 22:00',
-        business_category: info.business_category || 'F&B'
+        business_category: info.business_category || 'F&B',
+        shift_limit_hours: info.shift_limit_hours || 8
       });
     } catch (err) {
       console.error('Failed to fetch settings data', err);
@@ -96,13 +98,24 @@ export default function OwnerSettingsPage() {
     setSubmitLoading(true);
     setMessage(null);
     try {
+      const isCurrentlyFrozen = storeInfo?.status === 'frozen' || storeInfo?.is_manual_frozen;
+
       await apiFetch('/license-keys/activate', {
         method: 'POST',
         body: JSON.stringify({ key: sanitizedKey })
       });
+
       setMessage({ type: 'success', text: 'Lisensi berhasil diaktifkan! Toko Anda kini dalam mode Full Akses.' });
       setLicenseKey('');
-      fetchData();
+
+      if (isCurrentlyFrozen) {
+        // Full refresh to clear the global layout's frozen state
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else {
+        await fetchData();
+      }
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || 'Serial Key tidak valid atau sudah digunakan.' });
     } finally {
@@ -233,6 +246,22 @@ export default function OwnerSettingsPage() {
                     />
                   </div>
                 </div>
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Batas Jam Kerja Shift (Maksimal)</label>
+                  <div className="relative group">
+                    <Clock size={16} className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-indigo-500 transition-colors" />
+                    <input
+                      type="number"
+                      min="1"
+                      max="24"
+                      value={storeForm.shift_limit_hours}
+                      onChange={e => setStoreForm({ ...storeForm, shift_limit_hours: e.target.value === '' ? '' : parseInt(e.target.value) })}
+                      className="w-full h-14 bg-slate-50 border border-transparent focus:bg-white focus:border-indigo-500 rounded-2xl pl-14 pr-6 outline-none transition-all text-sm font-bold shadow-inner"
+                      placeholder="8"
+                    />
+                  </div>
+                  <p className="text-[9px] text-slate-400 italic pl-1">Target durasi kerja ideal per shift. Akan muncul peringatan jika melebihi batas ini.</p>
+                </div>
 
                 <div className="pt-6 flex justify-end">
                   <button
@@ -266,18 +295,28 @@ export default function OwnerSettingsPage() {
                   <div className="space-y-4">
                     <div className="flex justify-between text-xs font-black uppercase tracking-widest opacity-60 px-1">
                       <span>Masa Berlaku</span>
-                      <span className="text-right">Sisa {storeInfo?.license_days_remaining || 0} Hari</span>
+                      <span className={`text-right ${storeInfo?.license_days_remaining <= 0 ? 'text-rose-500' : ''}`}>
+                        {storeInfo?.license_days_remaining <= 0
+                          ? `EXPIRED (Masa Tenggang ${storeInfo?.license_days_remaining} hari)`
+                          : `Sisa ${storeInfo?.license_days_remaining || 0} Hari`}
+                      </span>
                     </div>
                     <div className="h-3 w-full bg-black/5 rounded-full overflow-hidden">
                       <div
-                        className={`h-full rounded-full ${isTrial ? 'bg-amber-500' : 'bg-indigo-500'}`}
-                        style={{ width: `${Math.min(100, (storeInfo?.license_days_remaining || 0) * 3)}%` }}
+                        className={`h-full rounded-full ${storeInfo?.license_days_remaining <= 0 ? 'bg-rose-500 animate-pulse' : isTrial ? 'bg-amber-500' : 'bg-indigo-500'}`}
+                        style={{ width: `${Math.max(5, Math.min(100, (storeInfo?.license_days_remaining || 0) * 3))}%` }}
                       ></div>
                     </div>
-                    {!isTrial && (
+                    {!isTrial && storeInfo?.status !== 'frozen' && !storeInfo?.is_manual_frozen && (
                       <div className="flex items-center gap-2 text-[10px] font-bold opacity-60">
                         <ShieldCheck size={14} className="text-emerald-500" />
                         Status: Lisensi Terproteksi & Aktif
+                      </div>
+                    )}
+                    {(storeInfo?.status === 'frozen' || storeInfo?.is_manual_frozen) && (
+                      <div className="flex items-center gap-2 text-[10px] font-black text-rose-500 bg-rose-50 px-4 py-2 rounded-xl border border-rose-100 animate-pulse">
+                        <AlertCircle size={14} />
+                        Status: TOKO DIBEKUKAN (Butuh Aktivasi)
                       </div>
                     )}
                   </div>
@@ -308,8 +347,12 @@ export default function OwnerSettingsPage() {
                 <div className="flex items-center gap-6 mb-10">
                   <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-[1.5rem] flex items-center justify-center shadow-inner"><Key size={32} /></div>
                   <div>
-                    <h3 className="text-2xl font-black tracking-tight text-[#0F172A]">Aktivasi Serial Key</h3>
-                    <p className="text-sm text-slate-400 font-medium">Masukkan kunci lisensi yang Anda beli dari Admin untuk upgrade/perpanjang.</p>
+                    <h3 className="text-2xl font-black tracking-tight text-[#0F172A]">Aktivasi Lisensi</h3>
+                    <p className="text-sm text-slate-400 font-medium">
+                      {(storeInfo?.status === 'frozen' || storeInfo?.is_manual_frozen)
+                        ? 'Toko Anda sedang dibekukan. Masukkan Serial Key baru untuk membuka blokir dan kembali beroperasi.'
+                        : 'Masukkan kunci lisensi baru untuk mengupgrade atau memperpanjang masa aktif toko Anda.'}
+                    </p>
                   </div>
                 </div>
 

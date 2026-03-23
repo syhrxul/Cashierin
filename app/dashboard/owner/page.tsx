@@ -25,7 +25,8 @@ import {
   Zap,
   ArrowRight,
   LayoutDashboard,
-  CheckCircle2
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 
@@ -53,20 +54,30 @@ export default function OwnerDashboard() {
         setUser(userRes);
 
         if (userRes.approval_status === 'approved' && userRes.store_id) {
-          // Parallel fetch for speed
-          const [statsData, infoRes]: [any, any] = await Promise.all([
-            apiFetch('/owner/dashboard').catch(() => ({
+          try {
+            // Fetch stats and info. If it fails with 404, the store is likely deleted.
+            const statsData: any = await apiFetch('/owner/dashboard');
+            const infoRes: any = await apiFetch('/store/info');
+
+            setStats(statsData.data || statsData);
+            if (infoRes) setStoreInfo(infoRes.data || infoRes);
+          } catch (err: any) {
+            console.warn('Store access failed, likely deleted:', err);
+            // If store is 404, we reset store_id so the setup UI shows up
+            if (err.message?.includes('404') || err.message?.includes('tidak ditemukan')) {
+              const updatedUser = { ...userRes, store_id: null };
+              setUser(updatedUser);
+              localStorage.setItem('user', JSON.stringify(updatedUser));
+            }
+
+            // Fallback stats
+            setStats({
               today_revenue: 0,
               total_inventory: 0,
               active_employees: 0,
-              pending_orders: 0,
               popular_products: []
-            })),
-            apiFetch('/store/info').catch(() => null)
-          ]);
-
-          setStats(statsData);
-          if (infoRes) setStoreInfo(infoRes.data);
+            });
+          }
         }
       } catch (err) {
         console.error(err);
@@ -298,25 +309,60 @@ export default function OwnerDashboard() {
   return (
     <div className="space-y-10 animate-in fade-in duration-1000">
       {/* License Warning Banner */}
-      {storeInfo?.license_days_remaining !== null && storeInfo?.license_days_remaining < 7 && storeInfo?.status !== 'frozen' && (
-        <div className="bg-gradient-to-r from-amber-500/10 to-amber-600/5 border border-amber-200/50 p-6 rounded-[2.5rem] flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
-          <div className="flex items-center gap-6">
-            <div className="w-14 h-14 bg-amber-500 text-white rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-amber-200">
-              <Clock size={28} />
+      {(() => {
+        const days = storeInfo?.license_days_remaining;
+        const expiresAt = storeInfo?.license_expires_at;
+        const status = storeInfo?.status;
+
+        // Calculate days if missing but we have expires_at
+        let effectiveDays = days;
+        if ((effectiveDays === null || effectiveDays === undefined) && expiresAt) {
+          const diff = new Date(expiresAt).getTime() - new Date().getTime();
+          effectiveDays = Math.ceil(diff / (1000 * 60 * 60 * 24));
+        }
+
+        const shouldShow = effectiveDays !== null && effectiveDays !== undefined && effectiveDays < 7 && status !== 'frozen';
+
+        if (!shouldShow) return null;
+
+        return effectiveDays > 0 ? (
+          <div className="bg-gradient-to-r from-amber-500/10 to-amber-600/5 border border-amber-200/50 p-6 rounded-[2.5rem] flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
+            <div className="flex items-center gap-6">
+              <div className="w-14 h-14 bg-amber-500 text-white rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-amber-200">
+                <Clock size={28} />
+              </div>
+              <div>
+                <h4 className="text-lg font-black text-amber-900 tracking-tight">Lisensi Hampir Berakhir!</h4>
+                <p className="text-sm text-amber-700 font-medium font-outfit">Sisa waktu trial/lisensi Anda tinggal <span className="font-black underline">{effectiveDays} hari</span> lagi. Segera perbarui sebelum toko dibekukan.</p>
+              </div>
             </div>
-            <div>
-              <h4 className="text-lg font-black text-amber-900 tracking-tight">Lisensi Hampir Berakhir!</h4>
-              <p className="text-sm text-amber-700 font-medium">Sisa waktu trial/lisensi Anda tinggal <span className="font-black underline">{storeInfo.license_days_remaining} hari</span> lagi. Segera perbarui sebelum toko dibekukan.</p>
-            </div>
+            <button
+              onClick={() => router.push('/dashboard/owner/settings?tab=license')}
+              className="h-12 px-8 bg-amber-500 text-white font-black rounded-xl text-[10px] uppercase tracking-widest hover:bg-amber-600 transition-all shadow-md shadow-amber-100"
+            >
+              Aktivasi Lisensi
+            </button>
           </div>
-          <button
-            onClick={() => router.push('/dashboard/owner/settings?tab=license')}
-            className="h-12 px-8 bg-amber-500 text-white font-black rounded-xl text-[10px] uppercase tracking-widest hover:bg-amber-600 transition-all shadow-md shadow-amber-100"
-          >
-            Aktivasi Lisensi
-          </button>
-        </div>
-      )}
+        ) : (
+          <div className="bg-gradient-to-r from-rose-500/10 to-rose-600/5 border border-rose-200/50 p-6 rounded-[2.5rem] flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm border-dashed border-2 animate-pulse">
+            <div className="flex items-center gap-6">
+              <div className="w-14 h-14 bg-rose-500 text-white rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-rose-200">
+                <AlertCircle size={28} />
+              </div>
+              <div>
+                <h4 className="text-lg font-black text-rose-900 tracking-tight">Lisensi Telah Berakhir!</h4>
+                <p className="text-sm text-rose-700 font-medium font-outfit">Anda berada dalam <span className="font-black underline italic">Masa Tenggang (Grace Period)</span>. Segera perbarui lisensi Anda sebelum seluruh akses dashboard dibekukan secara otomatis!</p>
+              </div>
+            </div>
+            <button
+              onClick={() => router.push('/dashboard/owner/settings?tab=license')}
+              className="h-12 px-8 bg-rose-600 text-white font-black rounded-xl text-[10px] uppercase tracking-widest hover:bg-rose-700 transition-all shadow-md shadow-rose-100 scale-105"
+            >
+              Perbarui Sekarang
+            </button>
+          </div>
+        );
+      })()}
 
       {/* Header View */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 bg-white p-10 rounded-[3rem] border border-slate-200/60 shadow-xl shadow-slate-100/50">
@@ -388,45 +434,6 @@ export default function OwnerDashboard() {
           </div>
         </div>
 
-        <div className="bg-slate-900 rounded-[4rem] p-12 text-white overflow-hidden relative group shadow-2xl shadow-indigo-900/40">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600 opacity-20 blur-[100px] -translate-y-32 translate-x-32" />
-          <div className="relative z-10 w-full">
-            <h3 className="text-xl font-bold tracking-tight mb-10 flex items-center gap-3">
-              Produk Terlaris
-              <Sparkles className="text-amber-400" size={18} />
-            </h3>
-            <div className="space-y-8">
-              {stats?.popular_products?.length > 0 ? stats?.popular_products?.map((p: any, i: number) => (
-                <div key={i} className="flex items-center justify-between group/item cursor-pointer">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 group-hover/item:bg-white/10 transition-all font-black text-xs">
-                      {i + 1}
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold truncate max-w-[120px]">{p.name}</p>
-                      <p className="text-[10px] text-white/40 font-black uppercase tracking-widest">{p.sales} Sold</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center text-indigo-400 group-hover/item:translate-x-1 transition-transform">
-                    <ChevronRight size={18} />
-                  </div>
-                </div>
-              )) : (
-                <div className="text-center py-10 text-white/20">
-                  <Box size={40} className="mx-auto mb-4" />
-                  <p className="text-[10px] font-black uppercase tracking-widest">Belum ada data</p>
-                </div>
-              )}
-            </div>
-            <button
-              onClick={() => router.push('/dashboard/owner/inventory')}
-              className="w-full mt-12 py-5 text-[10px] font-black uppercase tracking-[0.2em] text-white/30 hover:text-white hover:bg-white/5 border border-white/10 rounded-3xl transition-all flex items-center justify-center gap-2 group"
-            >
-              Full Inventory Stats
-              <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );

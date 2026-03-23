@@ -205,9 +205,10 @@ export default function RegisterPage() {
                       id="inviteCode"
                       type="text"
                       value={inviteCode}
-                      onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                      onChange={(e) => setInviteCode(e.target.value.toUpperCase().slice(0, 12))}
                       className="w-full h-14 pl-14 pr-6 bg-indigo-50 border-2 border-indigo-100 rounded-2xl font-black text-sm outline-none focus:ring-4 ring-indigo-100 transition-all placeholder:text-indigo-200"
                       placeholder="CONTOH: INV-12345"
+                      maxLength={12}
                       required={isStaffMode}
                     />
                   </div>

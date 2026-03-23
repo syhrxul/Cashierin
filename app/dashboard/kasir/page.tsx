@@ -18,7 +18,9 @@ import {
   User,
   History,
   Info,
-  Lock
+  Lock,
+  Ticket,
+  Sparkles
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 
@@ -43,30 +45,63 @@ export default function KasirPOSPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Semua');
-  const [checkoutStep, setCheckoutStep] = useState(0);
-
   const [storeInfo, setStoreInfo] = useState<any>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [inviteCode, setInviteCode] = useState('');
+  const [isJoining, setIsJoining] = useState(false);
+
+  async function fetchData() {
+    try {
+      setLoading(true);
+      setErrorMsg(null);
+
+      // Fetch store info first to check status
+      const infoRes: any = await apiFetch('/store/info').catch((err) => {
+        if (err.message?.includes('terdaftar')) throw err;
+        return null;
+      });
+      if (infoRes) setStoreInfo(infoRes.data || infoRes);
+
+      // Then fetch products
+      const response: any = await apiFetch('/products');
+      const productsList = response.data || (Array.isArray(response) ? response : []);
+      setProducts(productsList);
+    } catch (err: any) {
+      console.error('[POS] Load failed:', err);
+      setErrorMsg(err.message || 'Respons sistem gagal.');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    async function fetchProducts() {
-      try {
-        // Fetch store info first to check status
-        const infoRes: any = await apiFetch('/store/info').catch(() => null);
-        if (infoRes) setStoreInfo(infoRes.data);
-
-        // Then fetch products
-        const response: any = await apiFetch('/products');
-        const productsList = response.data || (Array.isArray(response) ? response : []);
-        setProducts(productsList);
-      } catch (err: any) {
-        console.error('[POS] Load failed:', err);
-        // If 403 and message contains license/frozen, we handle it via storeInfo
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchProducts();
+    fetchData();
   }, []);
+
+  const handleJoinStore = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteCode.trim()) return;
+
+    setIsJoining(true);
+    try {
+      await apiFetch('/stores/join', {
+        method: 'POST',
+        body: JSON.stringify({ invite_code: inviteCode.toUpperCase().trim() })
+      });
+
+      // Success! Refresh the user in layout and then reload the POS data
+      const updatedUser: any = await apiFetch('/user');
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+
+      setInviteCode('');
+      setErrorMsg(null);
+      await fetchData();
+    } catch (err: any) {
+      alert(err.message || 'Gagal mendaftarkan kode undangan.');
+    } finally {
+      setIsJoining(false);
+    }
+  };
 
   const addToCart = (product: Product) => {
     setCart(prev => {
@@ -103,6 +138,56 @@ export default function KasirPOSPage() {
     (p.name.toLowerCase().includes(search.toLowerCase()))
   );
 
+
+  if (errorMsg) {
+    return (
+      <div className="h-[75vh] flex items-center justify-center p-6">
+        <div className="max-w-xl w-full bg-white rounded-[4rem] p-16 text-center shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-500 overflow-hidden relative">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-bl-[4rem] -mr-8 -mt-8 flex items-center justify-center pt-8 pr-8">
+            <Ticket size={48} className="text-indigo-200 rotate-12" />
+          </div>
+
+          <div className="relative z-10">
+            <div className="w-24 h-24 bg-indigo-50 text-[#4F46E5] rounded-[2.5rem] flex items-center justify-center mx-auto mb-10 shadow-xl shadow-indigo-100/50">
+              <ShoppingCart size={44} strokeWidth={1.5} />
+            </div>
+
+            <h2 className="text-3xl font-black text-[#0F172A] tracking-tighter mb-4">Gabung dengan Toko</h2>
+            <p className="text-slate-400 font-medium leading-relaxed mb-12 px-6">
+              Akun Kasir Anda belum terdaftar di unit manapun. Masukkan <span className="text-[#4F46E5] font-black">Invite Code</span> dari Owner Toko untuk mulai bekerja.
+            </p>
+
+            <form onSubmit={handleJoinStore} className="space-y-6">
+              <div className="relative group">
+                <Ticket size={20} className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#4F46E5] transition-colors" />
+                <input
+                  type="text"
+                  placeholder="CONTOH: INV-XXXXX"
+                  value={inviteCode}
+                  onChange={(e) => setInviteCode(e.target.value.toUpperCase().slice(0, 12))}
+                  className="w-full h-18 pl-18 pr-6 bg-slate-50 border-2 border-transparent focus:border-indigo-100 focus:bg-white rounded-[1.75rem] text-lg font-black tracking-widest outline-none transition-all placeholder:text-slate-200 placeholder:font-normal text-indigo-600"
+                  maxLength={12}
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isJoining || !inviteCode}
+                className="w-full h-18 bg-[#4F46E5] text-white font-black uppercase tracking-[0.2em] text-[10px] rounded-3xl hover:bg-[#4338CA] transition-all shadow-2xl shadow-indigo-200 flex items-center justify-center gap-3 disabled:bg-slate-200 disabled:shadow-none"
+              >
+                {isJoining ? <Loader2 className="animate-spin" size={20} /> : <><Sparkles size={20} /> Aktivasi Unit & Masuk</>}
+              </button>
+            </form>
+
+            <p className="mt-10 text-[10px] font-black uppercase tracking-widest text-slate-300">
+              Bukan kasir? <button onClick={() => window.location.reload()} className="text-[#4F46E5] hover:underline">Refresh Status</button>
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // MAIN VIEW
   return (

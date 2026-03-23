@@ -16,11 +16,14 @@ import {
   PlusCircle,
   AlertCircle,
   RefreshCw,
-  X
+  X,
+  Clock
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
 
 export default function SuperAdminDashboard() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<any>({
     total_users: 0,
@@ -38,20 +41,23 @@ export default function SuperAdminDashboard() {
 
     try {
       // Step 1: Fetch Users
+      console.log('[Dashboard] Fetching users...');
       const usersRes: any = await apiFetch('/superadmin/users').catch(e => {
-        console.warn('Users fetch failed:', e);
+        console.error('Users fetch failed:', e);
         return { data: [] };
       });
 
       // Step 2: Fetch Stores
+      console.log('[Dashboard] Fetching stores...');
       const storesRes: any = await apiFetch('/superadmin/stores').catch(e => {
-        console.warn('Stores fetch failed:', e);
+        console.error('Stores fetch failed:', e);
         return { data: [] };
       });
 
       // Step 3: Fetch Pending Registrations
+      console.log('[Dashboard] Fetching pending registrations...');
       const pendingRes: any = await apiFetch('/superadmin/users/pending').catch(e => {
-        console.warn('Pending users fetch failed:', e);
+        console.error('Pending users fetch failed:', e);
         return { data: [] };
       });
 
@@ -59,12 +65,25 @@ export default function SuperAdminDashboard() {
       const storesList = storesRes.data || (Array.isArray(storesRes) ? storesRes : []);
       const pendingList = pendingRes.data || (Array.isArray(pendingRes) ? pendingRes : []);
 
-      // Manual aggregation for the dashboard
+      // Step 4: Fetch Aggregated Stats
+      console.log('[Dashboard] Fetching aggregated dashboard stats...');
+      const statsRes: any = await apiFetch('/superadmin/dashboard').catch(e => {
+        console.error('Dashboard stats fetch failed (500 expected if server is down):', e);
+        return { stats: {} };
+      });
+      const remoteStats = statsRes.data?.stats || statsRes.stats || {};
+
+      // Manual aggregation logic to ensure dashboard remains useful even if Step 4 fails
+      const manualRejectedCount = usersList.filter((u: any) => u.approval_status === 'rejected').length;
+      const manualPendingCount = usersList.filter((u: any) => u.approval_status === 'pending').length;
+
       setStats({
         total_users: usersList.length,
         total_stores: storesList.length,
-        total_transactions: 0, // No production endpoint for aggregate transactions yet
-        total_revenue: 0,      // No production endpoint for aggregate revenue yet
+        total_rejected: remoteStats.users?.total_rejected ?? manualRejectedCount,
+        total_pending_approval: remoteStats.users?.total_pending ?? manualPendingCount,
+        total_transactions: remoteStats.volume?.transactions || 0,
+        total_revenue: remoteStats.volume?.revenue || remoteStats.stats?.total_revenue || 0,
         recent_registrations: pendingList.map((u: any) => ({
           id: u.id,
           name: u.name,
@@ -76,8 +95,7 @@ export default function SuperAdminDashboard() {
 
     } catch (err: any) {
       console.error('[Dashboard] Critical aggregation error:', err);
-      // We don't use simulation mode here as per user request
-      setErrorMsg('Gagal melakukan sinkronisasi data dari beberapa endpoint.');
+      setErrorMsg('Gagal melakukan sinkronisasi data seluruh metrik.');
     } finally {
       setLoading(false);
     }
@@ -134,22 +152,32 @@ export default function SuperAdminDashboard() {
       )}
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-6">
         {[
-          { title: 'Total Revenue', val: `Rp ${new Intl.NumberFormat('id-ID').format(stats.total_revenue)}`, icon: DollarSign, color: 'indigo', note: 'Global stats' },
-          { title: 'Store Units', val: stats.total_stores, icon: Store, color: 'emerald', note: 'Data' },
-          { title: 'Registered Users', val: stats.total_users, icon: Users, color: 'amber', note: 'Data' },
-          { title: 'Transactions', val: stats.total_transactions, icon: CreditCard, color: 'rose', note: 'Global stats' }
+          { title: 'Units Toko', val: stats.total_stores, icon: Store, color: 'emerald', href: '/dashboard/superadmin/stores' },
+          { title: 'Total User', val: stats.total_users, icon: Users, color: 'indigo', href: '/dashboard/superadmin/users' },
+          { title: 'Menunggu Approval', val: stats.recent_registrations.length, icon: Clock, color: 'amber', href: '/dashboard/superadmin/users?status=pending' },
+          { title: 'User Ditolak', val: stats.total_rejected || 0, icon: X, color: 'rose', href: '/dashboard/superadmin/users?status=rejected' },
+          { title: 'Revenue Global', val: `Rp ${stats.total_revenue.toLocaleString('id-ID')}`, icon: DollarSign, color: 'emerald', href: null },
+          { title: 'Transactions', val: stats.total_transactions, icon: CreditCard, color: 'indigo', href: null }
         ].map((item, i) => (
-          <div key={i} className="group relative bg-white p-8 rounded-[3rem] border border-slate-200/60 overflow-hidden hover:shadow-2xl hover:shadow-indigo-100/40 transition-all duration-700">
-            <div className={`w-14 h-14 rounded-2xl bg-${item.color}-50 text-${item.color}-600 group-hover:bg-${item.color}-600 group-hover:text-white transition-all duration-700 flex items-center justify-center mb-8 shadow-sm`}>
-              <item.icon size={28} />
+          <div
+            key={i}
+            onClick={() => item.href && router.push(item.href)}
+            className={`group relative bg-white p-6 rounded-[2.5rem] border border-slate-200/60 overflow-hidden shadow-sm transition-all duration-500 ${item.href ? 'cursor-pointer hover:shadow-2xl hover:shadow-indigo-100/40 hover:-translate-y-1' : ''}`}
+          >
+            <div className={`w-12 h-12 rounded-xl bg-${item.color}-50 text-${item.color}-600 group-hover:bg-${item.color}-600 group-hover:text-white transition-all duration-500 flex items-center justify-center mb-6 shadow-sm`}>
+              <item.icon size={24} />
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">{item.title}</p>
-              <h3 className="text-2xl font-black tracking-tight text-[#0F172A] tabular-nums">{item.val}</h3>
-              <p className="text-[8px] font-black uppercase text-slate-200 mt-2">{item.note}</p>
+              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-300">{item.title}</p>
+              <h3 className="text-xl font-black tracking-tight text-[#0F172A] tabular-nums">{item.val}</h3>
             </div>
+            {item.href && (
+              <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                <ArrowUpRight size={14} className="text-slate-300" />
+              </div>
+            )}
           </div>
         ))}
       </div>

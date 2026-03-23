@@ -59,6 +59,7 @@ const menuByRole: Record<Role, any[]> = {
         { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard/owner' },
         { icon: ShoppingCart, label: 'Kasir (POS)', href: '/dashboard/kasir' },
         { icon: Users, label: 'Karyawan', href: '/dashboard/owner/employees' },
+        { icon: Clock, label: 'Jadwal Shift', href: '/dashboard/owner/shifts' },
       ]
     },
     {
