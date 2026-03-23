@@ -199,7 +199,9 @@ class TransactionController extends Controller
                 // STEP 4: Final Kalkulasi
                 // ========================
                 $totalDiscount = $productDiscount + $promotionDiscount + $couponDiscount;
-                $totalAmount   = max(0, $subtotal - $totalDiscount);
+                $afterDiscount = max(0, $subtotal - $totalDiscount);
+                $taxAmount     = $afterDiscount * 0.11;
+                $totalAmount   = $afterDiscount + $taxAmount;
 
                 $receiptNumber = 'INV-' . date('Ymd') . '-' . strtoupper(Str::random(6));
 
