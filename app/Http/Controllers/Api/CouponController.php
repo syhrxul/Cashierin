@@ -13,7 +13,7 @@ class CouponController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Coupon::query();
+        $query = Coupon::with('products');
 
         if ($request->has('store_id')) {
             $query->where('store_id', $request->store_id);
@@ -42,6 +42,8 @@ class CouponController extends Controller
             'is_active'    => 'nullable|boolean',
             'starts_at'    => 'nullable|date',
             'expires_at'   => 'nullable|date|after_or_equal:starts_at',
+            'product_ids'  => 'nullable|array',
+            'product_ids.*'=> 'exists:products,id',
         ]);
 
         // Validasi khusus untuk percentage
@@ -52,6 +54,10 @@ class CouponController extends Controller
         $coupon = Coupon::create($request->only([
             'store_id', 'code', 'name', 'type', 'value', 'min_purchase', 'max_uses', 'is_active', 'starts_at', 'expires_at'
         ]));
+
+        if ($request->has('product_ids')) {
+            $coupon->products()->sync($request->product_ids);
+        }
 
         return response()->json([
             'message' => 'Kupon berhasil dibuat.',
@@ -96,9 +102,15 @@ class CouponController extends Controller
             'is_active'    => 'nullable|boolean',
             'starts_at'    => 'nullable|date',
             'expires_at'   => 'nullable|date',
+            'product_ids'  => 'nullable|array',
+            'product_ids.*'=> 'exists:products,id',
         ]);
 
-        $coupon->update($request->except(['store_id']));
+        $coupon->update($request->except(['store_id', 'product_ids']));
+
+        if ($request->has('product_ids')) {
+            $coupon->products()->sync($request->product_ids);
+        }
 
         return response()->json([
             'message' => 'Kupon berhasil diperbarui.',

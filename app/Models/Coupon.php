@@ -34,6 +34,11 @@ class Coupon extends Model
         return $this->belongsTo(Store::class);
     }
 
+    public function products()
+    {
+        return $this->belongsToMany(Product::class, 'coupon_product');
+    }
+
     /**
      * Check apakah kupon masih valid untuk dipakai.
      */
