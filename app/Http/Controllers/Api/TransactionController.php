@@ -195,9 +195,6 @@ class TransactionController extends Controller
                     $coupon->increment('used_count');
                 }
 
-                // ========================
-                // STEP 4: Final Kalkulasi
-                // ========================
                 $totalDiscount = $productDiscount + $promotionDiscount + $couponDiscount;
                 $afterDiscount = max(0, $subtotal - $totalDiscount);
                 $taxAmount     = $afterDiscount * 0.11;

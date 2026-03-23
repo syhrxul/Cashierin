@@ -271,11 +271,10 @@ class ShiftScheduleController extends Controller
                         $availableEmployees = $employeesByRole->get($role);
                         if (!$availableEmployees || $availableEmployees->isEmpty()) break;
 
-                        // Smart selection: find employee with least hours in this period who is not overlapping
+                        // Smart selection: First priority - people with ZERO hours. Second - least hours.
                         $bestEmp = null;
                         $minHours = 9999;
                         
-                        // To keep it efficient but "smarter", we'll check all employees in this role
                         foreach ($availableEmployees as $emp) {
                             // 1. Conflict Check (Overlap)
                             $overlap = ShiftSchedule::where('user_id', $emp->id)
@@ -299,6 +298,12 @@ class ShiftScheduleController extends Controller
                                     return Carbon::parse($s->start_time)->diffInHours(Carbon::parse($s->end_time));
                                 });
 
+                            // ABSOLUTE PRIORITY: If they have 0 hours, they are our best candidate
+                            if ($currentHours == 0) {
+                                $bestEmp = $emp;
+                                break; // Found a zero-hour person, give them the shift!
+                            }
+
                             if ($currentHours < $minHours) {
                                 $minHours = $currentHours;
                                 $bestEmp = $emp;
@@ -311,7 +316,7 @@ class ShiftScheduleController extends Controller
                                 'user_id' => $bestEmp->id,
                                 'start_time' => $shiftStart,
                                 'end_time' => $shiftEnd,
-                                'notes' => "Auto-scheduled: {$def->name}",
+                                'notes' => "Auto-scheduled (Priority): {$def->name}",
                                 'status' => 'scheduled',
                                 'created_by' => $user->id,
                             ]);

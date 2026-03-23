@@ -48,7 +48,7 @@ class ShiftRequestController extends Controller
             'shift_id' => $request->shift_id,
             'target_user_id' => $request->target_user_id,
             'reason' => $request->reason,
-            'status' => 'pending',
+            'status' => ($request->type === 'swap') ? 'waiting_target' : 'pending',
         ]);
 
         return response()->json([
@@ -78,32 +78,44 @@ class ShiftRequestController extends Controller
     public function approve(Request $request, string $id)
     {
         $shiftRequest = ShiftRequest::findOrFail($id);
+        $user = $request->user();
 
         // Cek kepemilikan toko
         if ($request->has('store_id') && (int) $shiftRequest->store_id !== (int) $request->store_id) {
             return response()->json(['message' => 'Anda tidak memiliki akses ke data ini.'], 403);
         }
 
-        if ($shiftRequest->status !== 'pending') {
-            return response()->json(['message' => 'Permintaan ini sudah diproses.'], 400);
+        // Jika status sekarang 'waiting_target' dan yang approve adalah target_user_id
+        if ($shiftRequest->status === 'waiting_target' && (int)$user->id === (int)$shiftRequest->target_user_id) {
+            $shiftRequest->update(['status' => 'pending']); // Sekarang menunggu Owner/Manager
+            return response()->json(['message' => 'Anda telah menyetujui pertukaran. Menunggu persetujuan Owner/Manager.', 'data' => $shiftRequest]);
+        }
+
+        // Hanya Owner/Manager yang bisa melakukan approval FINAL
+        if (!in_array($user->role, ['superadmin', 'owner', 'manager'])) {
+             return response()->json(['message' => 'Menunggu persetujuan rekan kerja atau Owner.'], 403);
+        }
+
+        if ($shiftRequest->status === 'approved') {
+            return response()->json(['message' => 'Permintaan ini sudah disetujui sebelumnya.'], 400);
         }
 
         $shiftRequest->update([
             'status' => 'approved',
-            'approved_by' => $request->user()->id,
+            'approved_by' => $user->id,
             'approved_at' => now(),
         ]);
 
-        // Logic tambahan jika tipenya transfer
-        if ($shiftRequest->type === 'transfer' && $shiftRequest->shift_id && $shiftRequest->target_user_id) {
-            $shift = \App\Models\Shift::find($shiftRequest->shift_id);
-            if ($shift && $shift->status === 'open') {
+        // Logic pindah jadwal / tukar
+        if ($shiftRequest->shift_id && $shiftRequest->target_user_id) {
+            $shift = \App\Models\ShiftSchedule::find($shiftRequest->shift_id);
+            if ($shift) {
                 $shift->update(['user_id' => $shiftRequest->target_user_id]);
             }
         }
 
         return response()->json([
-            'message' => 'Permintaan shift disetujui.',
+            'message' => 'Permintaan shift disetujui (Final).',
             'data' => $shiftRequest
         ]);
     }
