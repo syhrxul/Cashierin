@@ -30,7 +30,7 @@ class ShiftScheduleController extends Controller
 
         return response()->json([
             'data' => $query->orderBy('start_time', 'desc')->get(),
-            'store' => $request->store
+            'store' => \App\Models\Store::find($request->store_id)
         ]);
     }
 
@@ -149,7 +149,8 @@ class ShiftScheduleController extends Controller
             'shift_limit_hours' => 'required|integer|min:1|max:24',
         ]);
 
-        $store = \App\Models\Store::where('id', $request->store_id)->firstOrFail();
+        $user = $request->user();
+        $store = \App\Models\Store::where('id', $user->store_id)->firstOrFail();
         $store->update([
             'shift_limit_hours' => $request->shift_limit_hours
         ]);

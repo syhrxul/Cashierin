@@ -26,6 +26,7 @@ class Store extends Model
         'is_manual_frozen' => 'boolean',
         'license_expires_at' => 'datetime',
         'grace_period_ends_at' => 'datetime',
+        'shift_limit_hours' => 'integer',
     ];
 
     protected static function boot()
