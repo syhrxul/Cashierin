@@ -35,7 +35,7 @@ class ShiftScheduleController extends Controller
     }
 
     /**
-     * Menambah jadwal shift baru.
+     * Menambah jadwal shift baru (Mendukung pemilihan banyak user).
      * HANYA Owner dan Manager yang bisa menambahkan jadwal untuk kasir.
      */
     public function store(Request $request)
@@ -50,33 +50,35 @@ class ShiftScheduleController extends Controller
         }
 
         $request->validate([
-            'user_id' => 'required|exists:users,id',
+            'user_ids' => 'required|array',
+            'user_ids.*' => 'exists:users,id',
             'start_time' => 'required|date',
             'end_time' => 'required|date|after:start_time',
             'notes' => 'nullable|string|max:255',
         ]);
 
-        // Pastikan user_id yang dijadwalkan berada di toko yang sama
-        $targetUser = \App\Models\User::findOrFail($request->user_id);
-        if ($user->role !== 'superadmin' && (int) $targetUser->store_id !== (int) $user->store_id) {
-            return response()->json([
-                'message' => 'Anda tidak dapat membuat jadwal untuk pegawai di toko lain.'
-            ], 403);
+        $createdCount = 0;
+        foreach ($request->user_ids as $userId) {
+            // Pastikan user_id yang dijadwalkan berada di toko yang sama
+            $targetUser = \App\Models\User::findOrFail($userId);
+            if ($user->role !== 'superadmin' && (int) $targetUser->store_id !== (int) $user->store_id) {
+                continue; // Lewati jika beda toko
+            }
+
+            ShiftSchedule::create([
+                'store_id' => $user->store_id,
+                'user_id' => $userId,
+                'start_time' => $request->start_time,
+                'end_time' => $request->end_time,
+                'notes' => $request->notes,
+                'status' => 'scheduled',
+                'created_by' => $user->id,
+            ]);
+            $createdCount++;
         }
 
-        $schedule = ShiftSchedule::create([
-            'store_id' => $user->store_id,
-            'user_id' => $request->user_id,
-            'start_time' => $request->start_time,
-            'end_time' => $request->end_time,
-            'notes' => $request->notes,
-            'status' => 'scheduled',
-            'created_by' => $user->id,
-        ]);
-
         return response()->json([
-            'message' => 'Jadwal shift berhasil dibuat.',
-            'data' => $schedule
+            'message' => "{$createdCount} jadwal shift berhasil dibuat.",
         ], 201);
     }
 
@@ -159,5 +161,21 @@ class ShiftScheduleController extends Controller
             'message' => 'Batas jam kerja berhasil diperbarui',
             'data' => $store
         ]);
+    }
+
+    public function bulkDestroy(Request $request)
+    {
+        $user = $request->user();
+        if (!in_array($user->role, ['superadmin', 'owner', 'manager'])) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $request->validate(['ids' => 'required|array', 'ids.*' => 'exists:shift_schedules,id']);
+        
+        $deletedCount = ShiftSchedule::where('store_id', $user->store_id)
+            ->whereIn('id', $request->ids)
+            ->delete();
+
+        return response()->json(['message' => "{$deletedCount} jadwal shift berhasil dihapus."]);
     }
 }
