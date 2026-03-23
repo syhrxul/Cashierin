@@ -17,7 +17,7 @@ class TransactionController extends Controller
 
     public function index(Request $request)
     {
-        $query = Transaction::with(['user', 'items.product']);
+        $query = Transaction::with(['user', 'items.product', 'store']);
 
         if ($request->has('store_id')) {
             $query->where('store_id', $request->store_id);
@@ -229,7 +229,7 @@ class TransactionController extends Controller
                         'coupon_discount'    => $couponDiscount,
                         'total_discount'     => $totalDiscount,
                     ],
-                    'data' => $transaction->load('items')
+                    'data' => $transaction->load(['items', 'store', 'user'])
                 ], 201);
             });
         } catch (\Exception $e) {
