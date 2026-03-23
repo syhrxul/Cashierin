@@ -143,6 +143,7 @@ class Store extends Model
     {
         $this->update([
             'status' => 'active',
+            'is_manual_frozen' => false,
             'license_type' => $licenseKey->type,
             'license_expires_at' => $licenseKey->expires_at,
             'grace_period_ends_at' => null,
