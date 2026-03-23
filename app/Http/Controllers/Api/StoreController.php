@@ -337,4 +337,46 @@ class StoreController extends Controller
             ]
         ]);
     }
+
+    /**
+     * Gabung ke toko menggunakan invite code.
+     */
+    public function joinByInvite(Request $request)
+    {
+        $user = $request->user();
+
+        $request->validate([
+            'invite_code' => 'required|string|max:10',
+        ]);
+
+        $store = Store::where('invite_code', $request->invite_code)->first();
+
+        if (!$store) {
+            return response()->json([
+                'message' => 'Kode undangan tidak valid atau toko tidak ditemukan.'
+            ], 404);
+        }
+
+        if ($user->store_id) {
+            return response()->json([
+                'message' => 'Anda sudah terdaftar pada sebuah toko. Hubungi admin untuk pindah toko.'
+            ], 400);
+        }
+
+        // Update User
+        $user->update(['store_id' => $store->id]);
+
+        ActivityLog::log('user_joined_store', "Pengguna @{$user->username} bergabung ke toko '{$store->name}' via invite code.", [
+            'user_id' => $user->id,
+            'store_id' => $store->id
+        ]);
+
+        return response()->json([
+            'message' => "Berhasil bergabung ke toko '{$store->name}'.",
+            'data' => [
+                'store_id' => $store->id,
+                'store_name' => $store->name
+            ]
+        ]);
+    }
 }

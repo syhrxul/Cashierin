@@ -65,6 +65,7 @@ Route::middleware(['auth:sanctum', 'superadmin', 'throttle:api'])->prefix('super
 // Routes that only require approval but not yet a store (initial setup)
 Route::middleware(['auth:sanctum', 'approved', 'throttle:api'])->group(function() {
     Route::post('/stores', [StoreController::class, 'store']);
+    Route::post('/stores/join', [StoreController::class, 'joinByInvite']);
 });
 
 // Routes that require store access but can be seen even if license is expired (for renewal/info)
