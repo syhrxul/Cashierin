@@ -346,7 +346,7 @@ class StoreController extends Controller
         $user = $request->user();
 
         $request->validate([
-            'invite_code' => 'required|string|max:24s',
+            'invite_code' => 'required|string|max:24',
         ]);
 
         $store = Store::where('invite_code', $request->invite_code)->first();
