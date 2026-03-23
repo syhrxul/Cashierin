@@ -42,7 +42,7 @@ class ShiftRequest extends Model
 
     public function shift()
     {
-        return $this->belongsTo(Shift::class);
+        return $this->belongsTo(ShiftSchedule::class, 'shift_id');
     }
 
     public function approver()

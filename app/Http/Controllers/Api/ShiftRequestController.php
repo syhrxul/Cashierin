@@ -36,7 +36,7 @@ class ShiftRequestController extends Controller
         $request->validate([
             'store_id' => 'required|exists:stores,id',
             'type' => 'required|in:permit,swap,transfer',
-            'shift_id' => 'nullable|exists:shifts,id',
+            'shift_id' => 'nullable|exists:shift_schedules,id',
             'target_user_id' => 'nullable|exists:users,id',
             'reason' => 'required|string',
         ]);
