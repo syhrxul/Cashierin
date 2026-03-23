@@ -17,11 +17,15 @@ class UserController extends Controller
         $query = User::where('store_id', $request->store_id);
 
         if ($request->has('role')) {
-            $query->where('role', $request->role);
+            $roles = explode(',', $request->role);
+            $query->whereIn('role', $roles);
         }
 
         if ($request->has('approval_status')) {
             $query->where('approval_status', $request->approval_status);
+        } else {
+            // Default to approved only for safety in selections
+            $query->where('approval_status', 'approved');
         }
 
         return response()->json([
