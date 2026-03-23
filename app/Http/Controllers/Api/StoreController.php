@@ -266,6 +266,7 @@ class StoreController extends Controller
                 'business_hours' => $store->business_hours,
                 'business_category' => $store->business_category,
                 'is_manual_frozen' => $store->is_manual_frozen,
+                'shift_limit_hours' => $store->shift_limit_hours ?? 8,
             ]
         ]);
     }
@@ -300,9 +301,10 @@ class StoreController extends Controller
             'address' => 'nullable|string|max:500',
             'business_hours' => 'nullable|string|max:255',
             'business_category' => 'nullable|string|max:255',
+            'shift_limit_hours' => 'nullable|integer|min:1|max:24',
         ]);
 
-        $store->update($request->only(['name', 'address', 'business_hours', 'business_category']));
+        $store->update($request->only(['name', 'address', 'business_hours', 'business_category', 'shift_limit_hours']));
 
         return response()->json([
             'message' => 'Informasi toko berhasil diperbarui.',
