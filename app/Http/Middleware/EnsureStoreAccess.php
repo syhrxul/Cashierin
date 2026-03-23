@@ -61,7 +61,10 @@ class EnsureStoreAccess
         }
 
         // Otomatis inject store_id user ke request
-        $request->merge(['store_id' => $user->store_id]);
+        $request->merge([
+            'store_id' => $user->store_id,
+            'store' => \App\Models\Store::find($user->store_id)
+        ]);
 
         return $next($request);
     }
