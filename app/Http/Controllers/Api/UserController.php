@@ -81,7 +81,7 @@ class UserController extends Controller
         }
 
         $request->validate([
-            'role' => 'sometimes|in:manager,kasir',
+            'role' => 'sometimes|string|max:50',
         ]);
 
         $user->update([
@@ -148,7 +148,7 @@ class UserController extends Controller
             'username' => 'required|string|max:50|unique:users,username|alpha_dash',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
-            'role' => 'required|in:manager,kasir',
+            'role' => 'required|string|max:50',
         ]);
 
         $store = \App\Models\Store::findOrFail($request->store_id);
@@ -209,7 +209,7 @@ class UserController extends Controller
             'username' => 'sometimes|string|max:50|alpha_dash|unique:users,username,' . $user->id,
             'email' => 'sometimes|string|email|max:255|unique:users,email,' . $user->id,
             'password' => 'sometimes|string|min:8',
-            'role' => 'sometimes|in:manager,kasir',
+            'role' => 'sometimes|string|max:50',
         ]);
 
         $data = $request->only(['name', 'username', 'email', 'role']);

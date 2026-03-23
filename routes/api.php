@@ -108,6 +108,7 @@ Route::middleware(['auth:sanctum', 'store.access', 'store.license', 'throttle:ap
     // Shift Schedule routes
     Route::post('/store/shift-limit', [\App\Http\Controllers\Api\ShiftScheduleController::class, 'updateLimit']);
     Route::post('/shift-schedules/bulk-destroy', [\App\Http\Controllers\Api\ShiftScheduleController::class, 'bulkDestroy']);
+    Route::post('/shift-schedules/bulk-update', [\App\Http\Controllers\Api\ShiftScheduleController::class, 'bulkUpdate']);
     Route::apiResource('shift-schedules', \App\Http\Controllers\Api\ShiftScheduleController::class);
 
     // Shift Request routes

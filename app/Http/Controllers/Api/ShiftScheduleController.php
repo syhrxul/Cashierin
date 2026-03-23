@@ -163,6 +163,32 @@ class ShiftScheduleController extends Controller
         ]);
     }
 
+    public function bulkUpdate(Request $request)
+    {
+        $user = $request->user();
+        if (!in_array($user->role, ['superadmin', 'owner', 'manager'])) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'exists:shift_schedules,id',
+            'start_time' => 'required|date',
+            'end_time' => 'required|date|after:start_time',
+            'notes' => 'nullable|string|max:255',
+        ]);
+        
+        $updatedCount = ShiftSchedule::where('store_id', $user->store_id)
+            ->whereIn('id', $request->ids)
+            ->update([
+                'start_time' => $request->start_time,
+                'end_time' => $request->end_time,
+                'notes' => $request->notes,
+            ]);
+
+        return response()->json(['message' => "{$updatedCount} jadwal shift berhasil diperbarui."]);
+    }
+
     public function bulkDestroy(Request $request)
     {
         $user = $request->user();
