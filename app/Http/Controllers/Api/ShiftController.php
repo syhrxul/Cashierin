@@ -232,4 +232,33 @@ class ShiftController extends Controller
 
         return response()->json(['data' => $shift]);
     }
+    /**
+     * Ringkasan penjualan selama shift (untuk penutupan).
+     */
+    public function summary(Request $request, string $id)
+    {
+        $shift = Shift::findOrFail($id);
+        
+        // Hitung total penjualan tunai
+        $cashSales = \App\Models\Transaction::where('shift_id', $shift->id)
+            ->where('status', 'completed')
+            ->where('payment_method', 'cash')
+            ->sum('total_amount');
+
+        $otherSales = \App\Models\Transaction::where('shift_id', $shift->id)
+            ->where('status', 'completed')
+            ->where('payment_method', '!=', 'cash')
+            ->sum('total_amount');
+
+        return response()->json([
+            'data' => [
+                'shift_id' => $shift->id,
+                'starting_cash' => $shift->starting_cash,
+                'cash_sales' => (float) $cashSales,
+                'other_sales' => (float) $otherSales,
+                'total_sales' => (float) ($cashSales + $otherSales),
+                'expected_ending_cash' => (float) ($shift->starting_cash + $cashSales),
+            ]
+        ]);
+    }
 }
