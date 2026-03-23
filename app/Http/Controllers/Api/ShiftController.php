@@ -215,4 +215,21 @@ class ShiftController extends Controller
 
         return response()->json(['data' => $shift]);
     }
+
+    /**
+     * Shift terakhir yang ditutup (untuk modal awal shift selanjutnya).
+     */
+    public function lastClosed(Request $request)
+    {
+        $shift = Shift::where('store_id', $request->user()->store_id)
+            ->where('status', 'closed')
+            ->latest('ended_at')
+            ->first();
+
+        if (!$shift) {
+            return response()->json(['message' => 'Belum ada shift sebelumnya.'], 404);
+        }
+
+        return response()->json(['data' => $shift]);
+    }
 }
