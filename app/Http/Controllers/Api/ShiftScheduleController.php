@@ -218,10 +218,18 @@ class ShiftScheduleController extends Controller
         $request->validate([
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
+            'template_ids' => 'nullable|array',
+            'template_ids.*' => 'exists:shift_time_definitions,id',
         ]);
 
         $storeId = $user->store_id;
-        $definitions = ShiftTimeDefinition::where('store_id', $storeId)->get();
+        $query = ShiftTimeDefinition::where('store_id', $storeId);
+        
+        if ($request->has('template_ids') && !empty($request->template_ids)) {
+            $query->whereIn('id', $request->template_ids);
+        }
+        
+        $definitions = $query->get();
         
         if ($definitions->isEmpty()) {
             return response()->json(['message' => 'Silakan buat template shift terlebih dahulu.'], 422);
@@ -259,34 +267,56 @@ class ShiftScheduleController extends Controller
                     
                     if (!$role || $count <= 0) continue;
                     
-                    $availableEmployees = $employeesByRole->get($role);
-                    if (!$availableEmployees || $availableEmployees->isEmpty()) continue;
-
-                    if (!isset($roleIndex[$role])) $roleIndex[$role] = 0;
-
                     for ($i = 0; $i < $count; $i++) {
-                        // Pick employee using round-robin
-                        $emp = $availableEmployees[$roleIndex[$role] % $availableEmployees->count()];
-                        $roleIndex[$role]++;
+                        $availableEmployees = $employeesByRole->get($role);
+                        if (!$availableEmployees || $availableEmployees->isEmpty()) break;
 
-                        // Check if already has a shift at this exact time (avoid duplicates)
-                        $exists = ShiftSchedule::where('user_id', $emp->id)
-                            ->where('start_time', $shiftStart)
-                            ->where('end_time', $shiftEnd)
-                            ->exists();
+                        // Smart selection: find employee with least hours in this period who is not overlapping
+                        $bestEmp = null;
+                        $minHours = 9999;
+                        
+                        // To keep it efficient but "smarter", we'll check all employees in this role
+                        foreach ($availableEmployees as $emp) {
+                            // 1. Conflict Check (Overlap)
+                            $overlap = ShiftSchedule::where('user_id', $emp->id)
+                                ->where(function($q) use ($shiftStart, $shiftEnd) {
+                                    $q->whereBetween('start_time', [$shiftStart, $shiftEnd->copy()->subSecond()])
+                                      ->orWhereBetween('end_time', [$shiftStart->copy()->addSecond(), $shiftEnd])
+                                      ->orWhere(function($sub) use ($shiftStart, $shiftEnd) {
+                                          $sub->where('start_time', '<=', $shiftStart)
+                                              ->where('end_time', '>=', $shiftEnd);
+                                      });
+                                })
+                                ->exists();
 
-                        if ($exists) continue;
+                            if ($overlap) continue;
 
-                        ShiftSchedule::create([
-                            'store_id' => $storeId,
-                            'user_id' => $emp->id,
-                            'start_time' => $shiftStart,
-                            'end_time' => $shiftEnd,
-                            'notes' => "Auto-generated from template: {$def->name}",
-                            'status' => 'scheduled',
-                            'created_by' => $user->id,
-                        ]);
-                        $generatedCount++;
+                            // 2. Fetch total hours for this employee in the target range to balance
+                            $currentHours = ShiftSchedule::where('user_id', $emp->id)
+                                ->whereBetween('start_time', [$startDate->startOfDay(), $endDate->endOfDay()])
+                                ->get()
+                                ->sum(function($s) {
+                                    return Carbon::parse($s->start_time)->diffInHours(Carbon::parse($s->end_time));
+                                });
+
+                            if ($currentHours < $minHours) {
+                                $minHours = $currentHours;
+                                $bestEmp = $emp;
+                            }
+                        }
+
+                        if ($bestEmp) {
+                            ShiftSchedule::create([
+                                'store_id' => $storeId,
+                                'user_id' => $bestEmp->id,
+                                'start_time' => $shiftStart,
+                                'end_time' => $shiftEnd,
+                                'notes' => "Auto-scheduled: {$def->name}",
+                                'status' => 'scheduled',
+                                'created_by' => $user->id,
+                            ]);
+                            $generatedCount++;
+                        }
                     }
                 }
             }
