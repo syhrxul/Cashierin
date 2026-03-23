@@ -106,6 +106,7 @@ Route::middleware(['auth:sanctum', 'store.access', 'store.license', 'throttle:ap
     Route::apiResource('shifts', \App\Http\Controllers\Api\ShiftController::class);
 
     // Shift Schedule routes
+    Route::post('/store/shift-limit', [\App\Http\Controllers\Api\ShiftScheduleController::class, 'updateLimit']);
     Route::apiResource('shift-schedules', \App\Http\Controllers\Api\ShiftScheduleController::class);
 
     // Shift Request routes

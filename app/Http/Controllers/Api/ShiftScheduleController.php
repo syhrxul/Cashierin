@@ -138,4 +138,24 @@ class ShiftScheduleController extends Controller
 
         return response()->json(['message' => 'Jadwal shift berhasil dihapus.']);
     }
+
+    /**
+     * Update store shift limit.
+     */
+    public function updateLimit(Request $request)
+    {
+        $request->validate([
+            'shift_limit_hours' => 'required|integer|min:1|max:24',
+        ]);
+
+        $store = \App\Models\Store::where('id', $request->store_id)->firstOrFail();
+        $store->update([
+            'shift_limit_hours' => $request->shift_limit_hours
+        ]);
+
+        return response()->json([
+            'message' => 'Batas jam kerja berhasil diperbarui',
+            'data' => $store
+        ]);
+    }
 }
