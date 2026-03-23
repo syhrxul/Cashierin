@@ -19,6 +19,7 @@ class Store extends Model
         'license_type',
         'license_expires_at',
         'grace_period_ends_at',
+        'shift_limit_hours',
     ];
 
     protected $casts = [
