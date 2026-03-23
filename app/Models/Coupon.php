@@ -53,10 +53,29 @@ class Coupon extends Model
     }
 
     /**
-     * Hitung nilai diskon dari total belanja.
+     * Hitung nilai diskon dari total belanja atau produk terpilih.
      */
-    public function calculateDiscount(float $total): float
+    public function calculateDiscount(float $total, array $items = []): float
     {
+        $hasTargetProducts = $this->products()->exists();
+        
+        if ($hasTargetProducts && !empty($items)) {
+            $targetIds = $this->products()->pluck('products.id')->toArray();
+            $applicableTotal = 0;
+            
+            foreach ($items as $item) {
+                if (in_array($item['product_id'], $targetIds)) {
+                    $applicableTotal += $item['price'] * $item['quantity'];
+                }
+            }
+            
+            if ($this->type === 'percentage') {
+                return round($applicableTotal * ($this->value / 100), 2);
+            }
+            return min($this->value, $applicableTotal);
+        }
+
+        // Default: applies to whole cart
         if ($this->type === 'percentage') {
             return round($total * ($this->value / 100), 2);
         }

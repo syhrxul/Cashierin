@@ -157,6 +157,8 @@ class CouponController extends Controller
             return response()->json(['message' => 'Kode kupon tidak ditemukan.'], 404);
         }
 
+        $items = $request->get('items', []);
+
         if (!$coupon->isValid($request->cart_total)) {
             return response()->json([
                 'message' => 'Kupon tidak valid atau sudah tidak bisa digunakan.',
@@ -164,7 +166,7 @@ class CouponController extends Controller
             ], 422);
         }
 
-        $discountAmount = $coupon->calculateDiscount($request->cart_total);
+        $discountAmount = $coupon->calculateDiscount($request->cart_total, $items);
 
         return response()->json([
             'message'         => 'Kupon valid.',
