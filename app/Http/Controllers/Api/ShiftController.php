@@ -239,25 +239,36 @@ class ShiftController extends Controller
     {
         $shift = Shift::findOrFail($id);
         
-        // Hitung total penjualan tunai
         $cashSales = \App\Models\Transaction::where('shift_id', $shift->id)
             ->where('status', 'completed')
             ->where('payment_method', 'cash')
             ->sum('total_amount');
 
-        $otherSales = \App\Models\Transaction::where('shift_id', $shift->id)
+        $qrisSales = \App\Models\Transaction::where('shift_id', $shift->id)
             ->where('status', 'completed')
-            ->where('payment_method', '!=', 'cash')
+            ->where('payment_method', 'qris')
+            ->sum('total_amount');
+
+        $debitSales = \App\Models\Transaction::where('shift_id', $shift->id)
+            ->where('status', 'completed')
+            ->where('payment_method', 'debit')
+            ->sum('total_amount');
+
+        $creditSales = \App\Models\Transaction::where('shift_id', $shift->id)
+            ->where('status', 'completed')
+            ->where('payment_method', 'credit')
             ->sum('total_amount');
 
         return response()->json([
             'data' => [
                 'shift_id' => $shift->id,
-                'starting_cash' => $shift->starting_cash,
+                'starting_cash' => (float) $shift->starting_cash,
                 'cash_sales' => (float) $cashSales,
-                'other_sales' => (float) $otherSales,
-                'total_sales' => (float) ($cashSales + $otherSales),
-                'expected_ending_cash' => (float) ($shift->starting_cash + $cashSales),
+                'qris_sales' => (float) $qrisSales,
+                'debit_sales' => (float) $debitSales,
+                'credit_sales' => (float) $creditSales,
+                'total_sales' => (float) ($cashSales + $qrisSales + $debitSales + $creditSales),
+                'expected_drawer_cash' => (float) ($shift->starting_cash + $cashSales),
             ]
         ]);
     }
