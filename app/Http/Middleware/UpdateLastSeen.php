@@ -16,7 +16,11 @@ class UpdateLastSeen
     public function handle(Request $request, Closure $next): Response
     {
         if ($user = $request->user()) {
-            $user->update(['last_seen_at' => now()]);
+            try {
+                $user->update(['last_seen_at' => now()]);
+            } catch (\Exception $e) {
+                // Skip if column not added yet
+            }
         }
 
         return $next($request);
