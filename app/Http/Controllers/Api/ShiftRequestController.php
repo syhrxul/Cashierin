@@ -87,8 +87,22 @@ class ShiftRequestController extends Controller
 
         // Jika status sekarang 'waiting_target' dan yang approve adalah target_user_id
         if ($shiftRequest->status === 'waiting_target' && (int)$user->id === (int)$shiftRequest->target_user_id) {
-            $shiftRequest->update(['status' => 'pending']); // Sekarang menunggu Owner/Manager
-            return response()->json(['message' => 'Anda telah menyetujui pertukaran. Menunggu persetujuan Owner/Manager.', 'data' => $shiftRequest]);
+            // Langsung setujui dan proses pertukaran (bypass Owner)
+            $shiftRequest->update([
+                'status' => 'approved',
+                'approved_by' => $user->id,
+                'approved_at' => now(),
+            ]);
+
+            // Logic pindah jadwal / tukar shift
+            if ($shiftRequest->shift_id) {
+                $shift = \App\Models\ShiftSchedule::find($shiftRequest->shift_id);
+                if ($shift) {
+                    $shift->update(['user_id' => $shiftRequest->target_user_id]);
+                }
+            }
+
+            return response()->json(['message' => 'Anda telah menyetujui pertukaran. Jadwal shift langsung dialihkan kepada Anda.', 'data' => $shiftRequest]);
         }
 
         // Hanya Owner/Manager yang bisa melakukan approval FINAL
