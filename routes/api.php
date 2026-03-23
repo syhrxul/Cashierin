@@ -104,6 +104,7 @@ Route::middleware(['auth:sanctum', 'store.access', 'store.license', 'throttle:ap
 
     // Shift routes
     Route::get('/shifts/active', [\App\Http\Controllers\Api\ShiftController::class, 'active']);
+    Route::get('/shifts/last-closed', [\App\Http\Controllers\Api\ShiftController::class, 'lastClosed']);
     Route::post('/shifts/{id}/close', [\App\Http\Controllers\Api\ShiftController::class, 'close']);
     Route::apiResource('shifts', \App\Http\Controllers\Api\ShiftController::class);
 
