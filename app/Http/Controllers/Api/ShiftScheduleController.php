@@ -29,7 +29,8 @@ class ShiftScheduleController extends Controller
         }
 
         return response()->json([
-            'data' => $query->orderBy('start_time', 'asc')->get()
+            'data' => $query->orderBy('start_time', 'desc')->get(),
+            'store' => $request->store
         ]);
     }
 
