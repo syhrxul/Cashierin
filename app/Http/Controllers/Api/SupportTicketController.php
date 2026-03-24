@@ -77,19 +77,18 @@ class SupportTicketController extends Controller
             ->leftJoin('stores', 'users.store_id', '=', 'stores.id')
             ->leftJoin('license_keys', function($join) {
                 $join->on('stores.id', '=', 'license_keys.store_id')
-                     ->where('license_keys.is_used', 1)
-                     ->orderBy('license_keys.used_at', 'desc')
-                     ->limit(1);
+                     ->where('license_keys.is_used', 1);
             })
             // PRIORITY 1: BUGS
             ->orderByRaw("CASE WHEN support_tickets.category = 'bug' THEN 0 ELSE 1 END")
             // PRIORITY 2: PREMIUM LICENSE (> 30 Days)
             ->orderByRaw("CASE 
-                WHEN stores.license_type = 'full' AND license_keys.duration_days > 30 THEN 0 
+                WHEN stores.license_type = 'full' AND MAX(license_keys.duration_days) > 30 THEN 0 
                 ELSE 1 
               END")
             // PRIORITY 3: CHRONOLOGICAL (Newest First)
             ->orderBy('support_tickets.created_at', 'desc')
+            ->groupBy('support_tickets.id')
             ->get();
 
         // Mark all as read by admin when viewing the list
