@@ -28,57 +28,78 @@ export default function DashboardLayout({
 
     if (!token) {
       router.replace('/login');
-    } else if (storedUser) {
+      return;
+    }
+
+    // Initial load from localStorage for responsiveness
+    if (storedUser) {
       try {
         const userData = JSON.parse(storedUser);
         setUser(userData);
-
-        // --- Role-Based Route Guard ---
-        const userRole = userData.role?.toLowerCase();
-        const pathParts = pathname.split('/');
-
-        // Ensure user is accessing their designated dashboard area
-        if (pathParts[1] === 'dashboard' && pathParts[2]) {
-          const targetSection = pathParts[2];
-
-          // 1. Superadmin area is strictly for superadmins
-          if (targetSection === 'superadmin' && userRole !== 'superadmin') {
-            router.replace(`/dashboard/${userRole === 'kasir' ? 'kasir' : userRole === 'owner' ? 'owner' : 'manager'}`);
-          }
-
-          // 2. Owner area is strictly for owners (and maybe managers if allowed, but here strictly for owner)
-          if (targetSection === 'owner' && userRole !== 'owner' && userRole !== 'superadmin') {
-            router.replace(`/dashboard/${userRole}`);
-          }
-
-          // 3. Manager area
-          if (targetSection === 'manager' && userRole !== 'manager' && userRole !== 'superadmin') {
-            router.replace(`/dashboard/${userRole}`);
-          }
-
-          // 4. Kasir area (POS) is usually accessible by Kasir, Manager, and Owner
-          if (targetSection === 'kasir' && !['kasir', 'owner', 'manager', 'superadmin'].includes(userRole)) {
-            router.replace('/login');
-          }
-
-          // 5. Special Case: Kasir role TRYING to access other things
-          if (userRole === 'kasir' && targetSection !== 'kasir') {
-            router.replace('/dashboard/kasir');
-          }
-        }
-        // --- End Guard ---
-
-        // Fetch store info if owner/kasir to check lock status globally
-        if (userData.role !== 'superadmin' && userData.store_id) {
-          apiFetch('/store/info')
-            .then((res: any) => setStoreInfo(res.data))
-            .catch(() => null);
-        }
       } catch (e) {
         console.error('Failed to parse user data');
       }
     }
+
+    // Always fetch latest data to sync role
+    apiFetch('/user')
+      .then((userData: any) => {
+        setUser(userData);
+        localStorage.setItem('user', JSON.stringify(userData));
+
+        // Fetch store info if owner/kasir/manager to check lock status globally
+        if (userData.role !== 'superadmin' && userData.store_id) {
+          apiFetch('/store/info')
+            .then((res: any) => {
+              const data = res.data || res;
+              setStoreInfo(data);
+              localStorage.setItem('store', JSON.stringify(data));
+            })
+            .catch(() => null);
+        }
+      })
+      .catch((err) => {
+        console.error('Profile sync failed:', err);
+      });
   }, [router]);
+
+  // Separate effect for route guard to avoid dependency issues and ensure consistency
+  useEffect(() => {
+    if (!mounted || !user) return;
+
+    const userRole = user.role?.toLowerCase();
+    const pathParts = pathname.split('/');
+
+    // Ensure user is accessing their designated dashboard area
+    if (pathParts[1] === 'dashboard' && pathParts[2]) {
+      const targetSection = pathParts[2];
+
+      // 1. Superadmin area
+      if (targetSection === 'superadmin' && userRole !== 'superadmin') {
+        router.replace(`/dashboard/${userRole === 'kasir' ? 'kasir' : (userRole === 'owner' || userRole === 'manager') ? 'owner' : 'superadmin'}`);
+      }
+
+      // 2. Owner area
+      if (targetSection === 'owner' && userRole !== 'owner' && userRole !== 'manager' && userRole !== 'superadmin') {
+        router.replace(`/dashboard/${userRole}`);
+      }
+
+      // 3. Manager area
+      if (targetSection === 'manager' && userRole !== 'manager' && userRole !== 'superadmin') {
+        router.replace(`/dashboard/${userRole}`);
+      }
+
+      // 4. Kasir area (POS)
+      if (targetSection === 'kasir' && !['kasir', 'owner', 'manager', 'superadmin'].includes(userRole)) {
+        router.replace('/login');
+      }
+
+      // 5. Special Case: Kasir role TRYING to access other things
+      if (userRole === 'kasir' && targetSection !== 'kasir') {
+        router.replace('/dashboard/kasir');
+      }
+    }
+  }, [pathname, user, mounted, router]);
 
   if (!mounted || !user) return (
     <div className="h-screen w-screen flex items-center justify-center bg-[#F8FAFC]">

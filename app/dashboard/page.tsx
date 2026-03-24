@@ -3,19 +3,17 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
+import { apiFetch } from '@/lib/api';
 
 export default function DashboardIndex() {
   const router = useRouter();
 
   useEffect(() => {
-    // We wrap everything in a small timeout or use immediate checks
-    const checkAuth = () => {
-      const userJson = localStorage.getItem('user');
+    const checkAuth = async () => {
       const token = localStorage.getItem('token');
-      
+
       console.log('--- DASHBOARD REDIRECT CHECK ---');
       console.log('Token exists:', !!token);
-      console.log('User data:', userJson);
 
       if (!token) {
         console.warn('Redirecting to login: MISSING TOKEN');
@@ -23,35 +21,48 @@ export default function DashboardIndex() {
         return;
       }
 
-      let role = 'superadmin';
-      if (userJson) {
-        try {
-          const user = JSON.parse(userJson);
-          role = user.role?.toLowerCase() || 'superadmin';
-          console.log('Parsed user role:', role);
-        } catch (e) {
-          console.error('JSON Parse error for user data, using default superadmin');
-        }
-      }
-
       // Map roles to their specific sub-dashboard paths
       const roleMap: Record<string, string> = {
         'superadmin': '/dashboard/superadmin',
         'owner': '/dashboard/owner',
-        'manager': '/dashboard/manager',
+        'manager': '/dashboard/owner', // Manager maps to owner in directory structure if not separate
         'kasir': '/dashboard/kasir',
       };
 
-      const targetPath = roleMap[role] || '/dashboard/superadmin';
-      console.log('REDIRECT TARGET:', targetPath);
-      
-      // Perform final redirection
-      router.replace(targetPath);
+      try {
+        console.log('Fetching latest user data to verify role...');
+        const user = await apiFetch('/user');
+
+        // Update local storage with fresh data including latest role
+        localStorage.setItem('user', JSON.stringify(user));
+
+        const role = user.role?.toLowerCase() || 'superadmin';
+        console.log('Latest user role from server:', role);
+
+        const targetPath = roleMap[role] || '/dashboard/superadmin';
+        console.log('REDIRECT TARGET (FRESH):', targetPath);
+        router.replace(targetPath);
+      } catch (err) {
+        console.error('Failed to fetch fresh user data, falling back to localStorage:', err);
+
+        // Fallback to localStorage if API is down
+        const userJson = localStorage.getItem('user');
+        let role = 'superadmin';
+
+        if (userJson) {
+          try {
+            const user = JSON.parse(userJson);
+            role = user.role?.toLowerCase() || 'superadmin';
+          } catch (e) { }
+        }
+
+        const targetPath = roleMap[role] || '/dashboard/superadmin';
+        console.log('REDIRECT TARGET (FALLBACK):', targetPath);
+        router.replace(targetPath);
+      }
     };
 
-    // Tiny delay to ensure localStorage is hydrated in all browser engines if needed
-    const timeoutId = setTimeout(checkAuth, 100);
-    return () => clearTimeout(timeoutId);
+    checkAuth();
   }, [router]);
 
   return (

@@ -16,6 +16,9 @@ import {
   Edit2,
   Sparkles,
   Zap,
+  Clock3,
+  XCircle,
+  FileText,
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 
@@ -33,6 +36,7 @@ export default function OwnerShiftsPage() {
   const [shifts, setShifts] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
   const [templates, setTemplates] = useState<any[]>([]);
+  const [shiftRequests, setShiftRequests] = useState<any[]>([]);
   const [store, setStore] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -86,15 +90,17 @@ export default function OwnerShiftsPage() {
         end_date: filters.end_date
       }).toString();
 
-      const [shiftsRes, usersRes, templatesRes]: any = await Promise.all([
+      const [shiftsRes, usersRes, templatesRes, requestsRes]: any = await Promise.all([
         apiFetch(`/shift-schedules?${queryParams}`),
         apiFetch('/users?role=kasir,manager'),
-        apiFetch('/shift-templates')
+        apiFetch('/shift-templates'),
+        apiFetch('/shift-requests')
       ]);
 
       setShifts(shiftsRes.data || []);
       setEmployees(usersRes.data || []);
       setTemplates(templatesRes.data || []);
+      setShiftRequests(requestsRes.data || []);
       if (shiftsRes.store) setStore(shiftsRes.store);
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message });
@@ -291,6 +297,34 @@ export default function OwnerShiftsPage() {
     }
   };
 
+  const handleApproveRequest = async (id: number) => {
+    try {
+      if (!confirm('Setujui pengajuan shift ini?')) return;
+      setActionLoading(true);
+      await apiFetch(`/shift-requests/${id}/approve`, { method: 'POST' });
+      setMessage({ type: 'success', text: 'Pengajuan disetujui!' });
+      fetchData();
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRejectRequest = async (id: number) => {
+    try {
+      if (!confirm('Tolak pengajuan shift ini?')) return;
+      setActionLoading(true);
+      await apiFetch(`/shift-requests/${id}/reject`, { method: 'POST' });
+      setMessage({ type: 'success', text: 'Pengajuan ditolak!' });
+      fetchData();
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const calculateHours = (start: string, end: string) => {
     return (new Date(end).getTime() - new Date(start).getTime()) / (1000 * 60 * 60);
   };
@@ -317,9 +351,11 @@ export default function OwnerShiftsPage() {
           <h1 className="text-5xl font-black tracking-tighter text-[#0F172A]">Jadwal & Shift</h1>
           <p className="text-sm text-slate-400 font-medium max-w-lg">Atur jam kerja tim secara efisien dengan generator AI.</p>
         </div>
-        <div className="flex bg-slate-100 p-2 rounded-[2rem] border border-slate-200 shadow-inner relative z-10">
-          <button onClick={() => setActiveTab('jadwal')} className={`px-10 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'jadwal' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-400 hover:text-slate-600'}`}>Daftar Jadwal</button>
-          <button onClick={() => setActiveTab('templates')} className={`px-10 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'templates' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-400 hover:text-slate-600'}`}>Master Shift</button>
+
+
+        <div className="flex bg-slate-100 p-2 rounded-[2rem] border border-slate-200 shadow-inner relative z-10 overflow-x-auto w-full md:w-auto">
+          <button onClick={() => setActiveTab('jadwal')} className={`shrink-0 px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'jadwal' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-400 hover:text-slate-600'}`}>Daftar Jadwal</button>
+          <button onClick={() => setActiveTab('templates')} className={`shrink-0 px-8 py-3 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'templates' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-400 hover:text-slate-600'}`}>Master Shift</button>
         </div>
       </div>
 
@@ -354,6 +390,20 @@ export default function OwnerShiftsPage() {
               <button onClick={() => setIsAddModalOpen(true)} className="h-20 px-10 bg-[#0F172A] text-white rounded-[2.5rem] font-black uppercase tracking-widest text-xs flex items-center gap-4 hover:bg-slate-800 transition-all shadow-2xl shadow-slate-200 active:scale-95"><Plus size={24} /> Jadwal Baru</button>
             </div>
           </div>
+          {/* Employees without shifts warning next to table */}
+          {employees.filter(e => !shifts.some(s => s.user_id === e.id)).length > 0 && (
+            <div className="flex flex-col gap-3 relative z-10">
+              <span className="text-[10px] font-black uppercase tracking-widest text-rose-400 ml-2">Peringatan: Kasir belum dapat shift</span>
+              <div className="flex flex-wrap gap-2">
+                {employees.filter(e => !shifts.some(s => s.user_id === e.id)).map(e => (
+                  <div key={e.id} className="px-4 py-2 bg-rose-50 border border-rose-100/50 rounded-xl flex items-center gap-2 group hover:bg-rose-500 hover:text-white transition-all shadow-sm">
+                    <AlertCircle size={14} className="text-rose-400 group-hover:text-white" />
+                    <span className="text-[10px] font-bold tracking-wider">{e.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <ShiftTable
             shifts={shifts}
             store={store}

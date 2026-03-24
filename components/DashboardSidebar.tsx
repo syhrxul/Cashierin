@@ -10,6 +10,7 @@ import {
   Activity,
   BarChart3,
   Settings,
+  Tag,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -59,12 +60,22 @@ const menuByRole: Record<Role, any[]> = {
         { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard/owner' },
         { icon: ShoppingCart, label: 'Kasir (POS)', href: '/dashboard/kasir' },
         { icon: Users, label: 'Karyawan', href: '/dashboard/owner/employees' },
-        { icon: Clock, label: 'Jadwal Shift', href: '/dashboard/owner/shifts' },
+        {
+          icon: Clock,
+          label: 'Manajemen Shift',
+          href: '/dashboard/owner/shifts',
+          subItems: [
+            { label: 'Jadwal & Master', href: '/dashboard/owner/shifts', icon: Clock },
+            { label: 'Riwayat Tukar', href: '/dashboard/owner/shifts/requests', icon: FileText },
+          ]
+        },
+        { icon: FileText, label: 'Riwayat Bill', href: '/dashboard/kasir/history' },
       ]
     },
     {
       label: 'Inventaris', items: [
-        { icon: Package, label: 'Stok Barang', href: '/dashboard/owner/inventory' },
+        { icon: Package, label: 'Nama & Stok Barang', href: '/dashboard/owner/products' },
+        { icon: Tag, label: 'Diskon & Promo', href: '/dashboard/owner/discounts' },
         { icon: FileText, label: 'Laporan Penjualan', href: '/dashboard/owner/reports' },
         { icon: Settings, label: 'Setup Toko', href: '/dashboard/owner/settings' },
       ]
@@ -75,6 +86,7 @@ const menuByRole: Record<Role, any[]> = {
       label: 'Menu', items: [
         { icon: LayoutDashboard, label: 'Overview', href: '/dashboard/manager' },
         { icon: Package, label: 'Manajemen Stok', href: '/dashboard/manager/inventory' },
+        { icon: FileText, label: 'Riwayat Bill', href: '/dashboard/kasir/history' },
         { icon: FileText, label: 'Reports', href: '/dashboard/manager/reports' },
       ]
     },
@@ -83,8 +95,9 @@ const menuByRole: Record<Role, any[]> = {
     {
       label: 'Point of Sale', items: [
         { icon: ShoppingCart, label: 'Jual (POS)', href: '/dashboard/kasir' },
+        { icon: Tag, label: 'Info Diskon', href: '/dashboard/kasir/discounts' },
         { icon: FileText, label: 'Riwayat Bill', href: '/dashboard/kasir/history' },
-        { icon: UserCircle, label: 'Profile', href: '/dashboard/kasir/profile' },
+        { icon: Clock, label: 'Jadwal & Shift', href: '/dashboard/kasir/profile' },
       ]
     },
   ],

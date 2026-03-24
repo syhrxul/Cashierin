@@ -114,7 +114,7 @@ export default function ShiftTable({
                   >
                     <td className="px-10 py-8 text-center">
                       <div
-                        onClick={(e) => { e.stopPropagation(); toggleGroup(group.ids); }}
+                        onClick={() => toggleGroup(group.ids)}
                         className={`mx-auto w-6 h-6 rounded-lg border-2 flex items-center justify-center cursor-pointer transition-all ${allSelected ? 'bg-indigo-600 border-indigo-600 text-white' : someSelected ? 'border-indigo-400 bg-indigo-50' : 'border-slate-200 bg-white group-hover:border-indigo-200'}`}
                       >
                         {allSelected && <CheckCircle2 size={12} />}
@@ -160,13 +160,13 @@ export default function ShiftTable({
                     <td className="px-10 py-8 text-right pr-14">
                       <div className="flex justify-end gap-2">
                         <button
-                          onClick={(e) => { e.stopPropagation(); onEditShift(group); }}
+                          onClick={() => onEditShift(group)}
                           className="w-12 h-12 bg-indigo-50 text-indigo-500 rounded-2xl flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all shadow-inner active:scale-90"
                         >
                           <Edit2 size={20} />
                         </button>
                         <button
-                          onClick={(e) => { e.stopPropagation(); onDeleteShift(group.ids); }}
+                          onClick={() => onDeleteShift(group.ids)}
                           className="w-12 h-12 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all shadow-inner active:scale-90"
                         >
                           <Trash2 size={20} />
