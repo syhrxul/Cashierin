@@ -61,7 +61,14 @@ class AnnouncementController extends Controller
             $query->where('store_id', $user->store_id);
         }
         
-        return response()->json(['data' => $query->latest()->get()]);
+        $announcements = $query->latest()->get();
+
+        // Mark as 'readonly' for UI if created by superadmin and current user isn't superadmin
+        $announcements->each(function($a) use ($user) {
+            $a->is_readonly = ($a->creator->role === 'superadmin' && $user->role !== 'superadmin');
+        });
+
+        return response()->json(['data' => $announcements]);
     }
 
     /**
@@ -77,6 +84,7 @@ class AnnouncementController extends Controller
             'scope' => 'required|in:global,store',
             'priority' => 'required|in:normal,important,critical',
             'target_user_ids' => 'nullable|array',
+            'target_role' => 'nullable|string',
             'is_active' => 'boolean'
         ]);
 
@@ -107,15 +115,15 @@ class AnnouncementController extends Controller
     public function update(Request $request, string $id)
     {
         $user = $request->user();
-        $announcement = Announcement::findOrFail($id);
+        $announcement = Announcement::with('creator')->findOrFail($id);
 
-        // ONLY Superadmin can edit Global news
-        if ($announcement->scope === 'global' && $user->role !== 'superadmin') {
-            return response()->json(['message' => 'Anda tidak memiliki akses untuk mengedit berita global.'], 403);
+        // SECURE: If creator is Superadmin, only Superadmin can edit.
+        if ($announcement->creator->role === 'superadmin' && $user->role !== 'superadmin') {
+            return response()->json(['message' => 'Hanya Superadmin yang dapat mengubah pengumuman sistem.'], 403);
         }
 
         // For Store news, only owner/manager of that store can edit
-        if ($announcement->scope === 'store' && $user->role !== 'superadmin' && $announcement->store_id !== $user->store_id) {
+        if ($user->role !== 'superadmin' && $announcement->store_id !== $user->store_id) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
@@ -142,13 +150,13 @@ class AnnouncementController extends Controller
     public function destroy(Request $request, string $id)
     {
         $user = $request->user();
-        $announcement = Announcement::findOrFail($id);
+        $announcement = Announcement::with('creator')->findOrFail($id);
 
-        if ($announcement->scope === 'global' && $user->role !== 'superadmin') {
-            return response()->json(['message' => 'Anda tidak memiliki akses untuk menghapus berita global.'], 403);
+        if ($announcement->creator->role === 'superadmin' && $user->role !== 'superadmin') {
+            return response()->json(['message' => 'Hanya Superadmin yang dapat menghapus pengumuman sistem.'], 403);
         }
 
-        if ($announcement->scope === 'store' && $user->role !== 'superadmin' && $announcement->store_id !== $user->store_id) {
+        if ($user->role !== 'superadmin' && $announcement->store_id !== $user->store_id) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
