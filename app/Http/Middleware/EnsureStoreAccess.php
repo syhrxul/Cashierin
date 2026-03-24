@@ -53,8 +53,8 @@ class EnsureStoreAccess
             ], 403);
         }
 
-        // Jika request mengirim store_id, pastikan sesuai dengan store_id user
-        if ($request->has('store_id') && (int) $request->store_id !== (int) $user->store_id) {
+        // Jika request mengirim store_id, pastikan sesuai dengan store_id user (kecuali jika kosong)
+        if ($request->filled('store_id') && (int) $request->store_id !== (int) $user->store_id) {
             return response()->json([
                 'message' => 'Anda tidak memiliki akses ke toko tersebut.'
             ], 403);
