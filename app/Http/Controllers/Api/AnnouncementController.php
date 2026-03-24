@@ -16,27 +16,27 @@ class AnnouncementController extends Controller
     {
         $user = $request->user();
         
-        $announcements = Announcement::with('creator')
-            ->where('is_active', true)
-            ->where(function ($query) use ($user) {
-                // Global announcements (from superadmin)
-                $query->where('scope', 'global');
-                
-                // Store-specific announcements (from owner/manager)
-                if ($user->store_id) {
-                    $query->orWhere(function ($q) use ($user) {
-                        $q->where('scope', 'store')
-                          ->where('store_id', $user->store_id);
-                    });
-                }
-            })
-            ->latest()
-            ->get();
+        $query = Announcement::with('creator')->where('is_active', true);
+        
+        $query->where(function ($q) use ($user) {
+            // Global scope
+            $q->where('scope', 'global');
+            
+            // Store scope
+            if ($user->store_id) {
+                $q->orWhere(function ($s) use ($user) {
+                    $s->where('scope', 'store')
+                      ->where('store_id', $user->store_id);
+                });
+            }
+        });
+
+        $announcements = $query->latest()->get();
             
         // Filter targeted users IF target_user_ids is not empty
         $filtered = $announcements->filter(function ($a) use ($user) {
             // 1. If target_role is set (and not 'all' or empty), user MUST have that role (e.g. 'owner')
-            if ($a->target_role && $a->target_role !== 'all' && $user->role !== $a->target_role) {
+            if ($a->target_role && !in_array($a->target_role, ['', 'all']) && $user->role !== $a->target_role) {
                 return false;
             }
 
@@ -61,14 +61,33 @@ class AnnouncementController extends Controller
         $query = Announcement::with(['creator', 'store']);
         
         if ($user->role === 'owner' || $user->role === 'manager') {
-            $query->where('store_id', $user->store_id);
+            $query->where(function ($q) use ($user) {
+                // Own store announcements
+                $q->where('store_id', $user->store_id);
+                
+                // Global announcements targeting this user's role OR all
+                $q->orWhere(function ($g) use ($user) {
+                    $g->where('scope', 'global')
+                      ->where(function ($roleQ) use ($user) {
+                          $roleQ->whereNull('target_role')
+                               ->orWhere('target_role', '')
+                               ->orWhere('target_role', 'all')
+                               ->orWhere('target_role', $user->role);
+                      });
+                });
+            });
         }
         
         $announcements = $query->latest()->get();
 
         // Mark as 'readonly' for UI if created by superadmin and current user isn't superadmin
         $announcements->each(function($a) use ($user) {
-            $a->is_readonly = ($a->creator->role === 'superadmin' && $user->role !== 'superadmin');
+            $creatorRole = optional($a->creator)->role;
+            $a->is_readonly = ($creatorRole === 'superadmin' && $user->role !== 'superadmin');
+            
+            // To ensure it serializes, we can use setAttribute or just rely on the object property 
+            // if we are sure it will be included. Eloquent models normally include dynamic properties 
+            // set during runtime in toArray/toJson if they are accessed.
         });
 
         return response()->json(['data' => $announcements]);
