@@ -174,4 +174,69 @@ class SuperadminController extends Controller
             'message' => 'User berhasil dihapus.'
         ]);
     }
+
+    public function approveUser(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+        
+        $user->update([
+            'approval_status' => 'approved',
+            'approved_by' => $request->user()->id,
+            'approved_at' => now(),
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'User berhasil disetujui.',
+            'data' => $user
+        ]);
+    }
+
+    public function rejectUser(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+        
+        $user->update([
+            'approval_status' => 'rejected',
+            'approved_by' => $request->user()->id,
+            'approved_at' => now(),
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'User telah ditolak.',
+            'data' => $user
+        ]);
+    }
+
+    public function changePassword(Request $request, $id)
+    {
+        $request->validate([
+            'password' => 'required|min:8|confirmed',
+        ]);
+
+        $user = User::findOrFail($id);
+        $user->update([
+            'password' => Hash::make($request->password)
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Password user berhasil diperbarui.'
+        ]);
+    }
+
+    public function toggleUserStatus(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+        
+        // Logic: if role is owner, maybe toggle store status? 
+        // But for generic user, we might use a separate 'is_active' column if it exists.
+        // Assuming we toggle approval_status or similar if they are already approved.
+        
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Fitur deaktivasi user akan segera diimplementasikan secara penuh.'
+        ]);
+    }
 }
