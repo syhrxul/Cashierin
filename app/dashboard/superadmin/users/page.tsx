@@ -124,6 +124,30 @@ export default function UserManagementPage() {
     }
   };
 
+  const handleApprove = async (id: number) => {
+    try {
+      setLoading(true);
+      await apiFetch(`/superadmin/users/${id}/approve`, { method: 'POST' });
+      fetchUsers();
+    } catch (err: any) {
+      alert(err.message || 'Gagal menyetujui user.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReject = async (id: number) => {
+    try {
+      setLoading(true);
+      await apiFetch(`/superadmin/users/${id}/reject`, { method: 'POST' });
+      fetchUsers();
+    } catch (err: any) {
+      alert(err.message || 'Gagal menolak user.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredUsers = users.filter(u => {
     const matchesSearch =
       u.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -265,13 +289,31 @@ export default function UserManagementPage() {
 
             <div className="pt-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${u.approval_status === 'approved' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                <div className={`w-2 h-2 rounded-full ${u.approval_status === 'approved' ? 'bg-emerald-500' : u.approval_status === 'rejected' ? 'bg-rose-500' : 'bg-amber-500'}`} />
                 <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                  {u.approval_status === 'approved' ? 'Active Unit' : 'Awaiting Review'}
+                  {u.approval_status === 'approved' ? 'Active Unit' : u.approval_status === 'rejected' ? 'Rejected' : 'Awaiting Review'}
                 </span>
               </div>
               <span className="text-[9px] font-bold text-slate-200 uppercase tracking-widest">UID: {u.id}</span>
             </div>
+
+            {/* Approval Actions */}
+            {u.approval_status !== 'approved' && (
+              <div className="mt-6 pt-6 border-t border-dashed border-slate-100 grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => handleApprove(u.id)}
+                  className="h-10 bg-emerald-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-50"
+                >
+                  <CheckCircle2 size={14} /> Setujui / ACC
+                </button>
+                <button
+                  onClick={() => handleReject(u.id)}
+                  className="h-10 bg-slate-50 text-slate-400 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-rose-50 hover:text-rose-500 transition-all flex items-center justify-center gap-2"
+                >
+                  <X size={14} /> Tolak
+                </button>
+              </div>
+            )}
           </div>
         ))}
       </div>

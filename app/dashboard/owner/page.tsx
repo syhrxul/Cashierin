@@ -377,7 +377,6 @@ export default function OwnerDashboard() {
               Store Analysis
             </div>
             <h1 className="text-3xl font-black tracking-tight text-[#0F172A]">Halo, {user?.name}</h1>
-            <p className="text-sm text-slate-400 font-medium italic mt-1">Status operasional toko Anda hari ini sangat memuaskan.</p>
           </div>
         </div>
         <div className="flex gap-3">

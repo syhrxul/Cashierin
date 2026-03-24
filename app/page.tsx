@@ -48,7 +48,6 @@ export default function LandingPage() {
 
    return (
       <div className="min-h-screen bg-[#F8FAFC] font-inter selection:bg-indigo-100 selection:text-indigo-600 relative overflow-x-hidden">
-         {/* Premium Navbar */}
          <nav className={`fixed w-full z-[100] transition-all duration-500 ${scrolled ? 'py-4' : 'py-8'}`}>
             <div className="max-w-7xl mx-auto px-4 md:px-8">
                <div className={`flex items-center justify-between p-3 rounded-[2rem] transition-all duration-500 ${scrolled ? 'bg-white/70 backdrop-blur-2xl border border-white/40 shadow-2xl shadow-slate-200/50' : 'bg-transparent border-transparent'}`}>
@@ -59,7 +58,6 @@ export default function LandingPage() {
                      <span className="text-xl md:text-2xl font-black tracking-tighter text-[#0F172A] uppercase">Cashierin.</span>
                   </div>
 
-                  {/* Desktop Menu */}
                   <div className="hidden lg:flex items-center gap-10">
                      {['Product', 'Enterprise', 'Solution', 'Pricing'].map(nav => (
                         <Link key={nav} href={nav === 'Pricing' ? '#pricing' : '#'} className="text-sm font-black text-[#94A3B8] hover:text-[#4F46E5] transition-all uppercase tracking-widest">{nav}</Link>
@@ -83,7 +81,6 @@ export default function LandingPage() {
                         )}
                      </div>
 
-                     {/* Mobile Toggle */}
                      <button
                         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                         className="w-12 h-12 flex lg:hidden items-center justify-center rounded-2xl bg-slate-50 text-slate-900 border border-slate-100 hover:bg-indigo-50 hover:text-indigo-600 transition-all"
@@ -94,7 +91,6 @@ export default function LandingPage() {
                </div>
             </div>
 
-            {/* Mobile Drawer */}
             <div className={`lg:hidden absolute top-full left-4 right-4 mt-4 p-8 bg-white/90 backdrop-blur-2xl rounded-[3rem] border border-white/60 shadow-3xl transition-all duration-500 origin-top ${mobileMenuOpen ? 'scale-100 opacity-100 visible' : 'scale-95 opacity-0 invisible'}`}>
                <div className="flex flex-col gap-6">
                   {['Product', 'Enterprise', 'Solution', 'Pricing'].map(nav => (
@@ -117,7 +113,6 @@ export default function LandingPage() {
             </div>
          </nav>
 
-         {/* Hero Section - High Contrast */}
          <section className="relative pt-40 md:pt-48 pb-20 md:pb-32 overflow-hidden px-4">
             <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-indigo-50/50 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2 opacity-50" />
 
@@ -144,7 +139,6 @@ export default function LandingPage() {
             </div>
          </section>
 
-         {/* Feature Grid - Deep Clean UI */}
          <section className="py-40 bg-white border-y border-slate-100">
             <div className="max-w-7xl mx-auto px-8">
                <div className="text-center mb-32 space-y-4">
@@ -173,7 +167,6 @@ export default function LandingPage() {
             </div>
          </section>
 
-         {/* Pricing Section - High Value UI */}
          <section id="pricing" className="py-40 relative backdrop-blur-3xl overflow-hidden">
             <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-slate-100 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 opacity-30" />
             <div className="max-w-7xl mx-auto px-8 relative z-10">

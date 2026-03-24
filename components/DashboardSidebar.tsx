@@ -25,7 +25,8 @@ import {
   XCircle,
   BarChart3,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  LifeBuoy
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
@@ -39,6 +40,7 @@ const menuByRole: Record<Role, any[]> = {
         { icon: Store, label: 'Daftar Toko', href: '/dashboard/superadmin/toko' },
         { icon: Key, label: 'Serial License', href: '/dashboard/superadmin/license' },
         { icon: Megaphone, label: 'Pengumuman', href: '/dashboard/superadmin/announcements' },
+        { icon: LifeBuoy, label: 'Support Tickets', href: '/dashboard/superadmin/support' },
         {
           icon: Users,
           label: 'Semua Pengguna',
@@ -75,6 +77,7 @@ const menuByRole: Record<Role, any[]> = {
           ]
         },
         { icon: FileText, label: 'Riwayat Bill', href: '/dashboard/kasir/history' },
+        { icon: LifeBuoy, label: 'Pusat Bantuan', href: '/dashboard/owner/support' },
       ]
     },
     {
@@ -94,6 +97,7 @@ const menuByRole: Record<Role, any[]> = {
         { icon: FileText, label: 'Riwayat Bill', href: '/dashboard/kasir/history' },
         { icon: FileText, label: 'Reports', href: '/dashboard/manager/reports' },
         { icon: Megaphone, label: 'Pengumuman', href: '/dashboard/manager/announcements' },
+        { icon: LifeBuoy, label: 'Pusat Bantuan', href: '/dashboard/owner/support' },
       ]
     },
   ],
@@ -118,6 +122,7 @@ export default function DashboardSidebar() {
   const [expandedMenus, setExpandedMenus] = useState<string[]>(['Semua Pengguna']);
 
   const [unreadCount, setUnreadCount] = useState(0);
+  const [supportUnreadCount, setSupportUnreadCount] = useState(0);
 
   useEffect(() => {
     const userJson = localStorage.getItem('user');
@@ -125,18 +130,26 @@ export default function DashboardSidebar() {
       const u = JSON.parse(userJson);
       setUser(u);
       setRole((u.role?.toLowerCase() || 'superadmin') as Role);
-      fetchUnreadCount();
+      fetchUnreadCounts();
     }
 
-    const handleUpdate = () => fetchUnreadCount();
+    const handleUpdate = () => fetchUnreadCounts();
     window.addEventListener('announcementCountUpdate', handleUpdate);
-    return () => window.removeEventListener('announcementCountUpdate', handleUpdate);
+    window.addEventListener('supportCountUpdate', handleUpdate);
+    return () => {
+      window.removeEventListener('announcementCountUpdate', handleUpdate);
+      window.removeEventListener('supportCountUpdate', handleUpdate);
+    };
   }, []);
 
-  const fetchUnreadCount = async () => {
+  const fetchUnreadCounts = async () => {
     try {
-      const res: any = await apiFetch('/announcements/unread-count');
-      setUnreadCount(res.count || 0);
+      const [annRes, supRes]: any = await Promise.all([
+        apiFetch('/announcements/unread-count'),
+        apiFetch('/support/unread-count')
+      ]);
+      setUnreadCount(annRes.count || 0);
+      setSupportUnreadCount(supRes.count || 0);
     } catch (err) { console.error(err); }
   };
 
@@ -209,6 +222,13 @@ export default function DashboardSidebar() {
                             </span>
                           )}
 
+                          {/* Support Badge */}
+                          {(item.label === 'Pusat Bantuan' || item.label === 'Support Tickets') && supportUnreadCount > 0 && (
+                            <span className="absolute right-4 w-5 h-5 bg-indigo-500 text-white text-[9px] font-black rounded-full flex items-center justify-center animate-pulse shadow-lg shadow-indigo-200">
+                              {supportUnreadCount}
+                            </span>
+                          )}
+
                           <ChevronDown size={14} className={`ml-auto transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
                         </button>
 
@@ -252,6 +272,11 @@ export default function DashboardSidebar() {
                                 {unreadCount}
                               </span>
                             )}
+                            {(item.label === 'Pusat Bantuan' || item.label === 'Support Tickets') && supportUnreadCount > 0 && (
+                              <span className="absolute right-4 w-5 h-5 bg-indigo-500 text-white text-[9px] font-black rounded-full flex items-center justify-center animate-pulse shadow-lg shadow-indigo-200">
+                                {supportUnreadCount}
+                              </span>
+                            )}
                           </>
                         )}
                         {isLocked && !isCollapsed && <Lock size={12} className="ml-auto text-slate-300" />}
@@ -276,7 +301,6 @@ export default function DashboardSidebar() {
         </button>
       </div>
 
-      {/* Collapse Toggle */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
         className="absolute -right-3 top-24 w-6 h-6 bg-white border border-[#E2E8F0] rounded-full flex items-center justify-center text-[#94A3B8] hover:text-[#4F46E5] hover:border-[#4F46E5] transition-all z-10 shadow-sm"

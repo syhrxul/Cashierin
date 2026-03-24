@@ -31,7 +31,6 @@ export default function LaporanPenjualanShiftPage() {
     totalTransactions: 0
   });
 
-  // Modal State
   const [selectedShiftId, setSelectedShiftId] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -43,7 +42,6 @@ export default function LaporanPenjualanShiftPage() {
 
       setShifts(fetchedShifts);
 
-      // Calculate daily summary
       let tSales = 0, tCash = 0, tQris = 0, tDebit = 0, tTxs = 0;
       fetchedShifts.forEach((s: any) => {
         tSales += (parseFloat(s.total_sales) || 0);

@@ -11,12 +11,16 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   // Guest endpoints that shouldn't leak old/expired tokens
   const isGuestRoute = cleanEndpoint === '/login' || cleanEndpoint === '/register' || cleanEndpoint === '/register/invite';
 
-  const headers = {
-    'Content-Type': 'application/json',
+  const isFormData = options.body instanceof FormData;
+  const headers: any = {
     'Accept': 'application/json',
     ...(token && !isGuestRoute ? { 'Authorization': `Bearer ${token}` } : {}),
     ...options.headers,
   };
+
+  if (!isFormData && !headers['Content-Type']) {
+    headers['Content-Type'] = 'application/json';
+  }
 
   try {
     const response = await fetch(url, {
