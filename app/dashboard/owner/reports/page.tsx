@@ -204,7 +204,7 @@ export default function LaporanPenjualanShiftPage() {
                           {/* Waktu */}
                           <td className="py-6 px-6 relative whitespace-nowrap">
                             <p className="text-xs font-bold text-slate-600 mb-1">{new Date(s.started_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</p>
-                            <p className="text-xs font-bold text-slate-400 flex items-center gap-1"><ArrowRight size={10} /> {s.ended_at ? new Date(s.ended_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '...'}</p>
+                            <p className="text-xs font-bold text-slate-400 flex items-center gap-1"><ArrowRight size={10} className="" /> {s.ended_at ? new Date(s.ended_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '...'}</p>
                           </td>
 
                           {/* Pendapatan (All Metrics) */}
