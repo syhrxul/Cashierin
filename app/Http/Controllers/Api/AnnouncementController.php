@@ -98,6 +98,44 @@ class AnnouncementController extends Controller
     }
 
     /**
+     * Menandai SEMUA pengumuman sudah dibaca.
+     */
+    public function markAllAsRead(Request $request)
+    {
+        $user = $request->user();
+        
+        $activeAnnouncements = Announcement::where('is_active', true)
+            ->where(function ($query) use ($user) {
+                $query->where('scope', 'global');
+                if ($user->store_id) {
+                    $query->orWhere(function ($s) use ($user) {
+                        $s->where('scope', 'store')->where('store_id', $user->store_id);
+                    });
+                }
+            })
+            ->get();
+            
+        $toMark = $activeAnnouncements->filter(function ($a) use ($user) {
+            if ($a->target_role && !in_array($a->target_role, ['', 'all']) && $user->role !== $a->target_role) {
+                return false;
+            }
+            if (!empty($a->target_user_ids) && count($a->target_user_ids) > 0) {
+                if (!in_array($user->id, $a->target_user_ids)) return false;
+            }
+            return true;
+        });
+
+        foreach ($toMark as $a) {
+            \App\Models\AnnouncementRead::updateOrCreate(
+                ['user_id' => $user->id, 'announcement_id' => $a->id],
+                ['read_at' => now()]
+            );
+        }
+
+        return response()->json(['message' => 'All marked as read.']);
+    }
+
+    /**
      * Hitung total pengumuman belum dibaca (untuk badge sidebar).
      */
     public function unreadCount(Request $request)

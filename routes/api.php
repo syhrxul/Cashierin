@@ -113,6 +113,7 @@ Route::middleware(['auth:sanctum', 'store.access', 'store.license', 'throttle:ap
     // Announcement routes
     Route::get('/announcements/dashboard', [AnnouncementController::class, 'dashboard']);
     Route::get('/announcements/unread-count', [AnnouncementController::class, 'unreadCount']);
+    Route::post('/announcements/read-all', [AnnouncementController::class, 'markAllAsRead']);
     Route::post('/announcements/{id}/read', [AnnouncementController::class, 'markAsRead']);
     Route::apiResource('announcements', AnnouncementController::class);
 
