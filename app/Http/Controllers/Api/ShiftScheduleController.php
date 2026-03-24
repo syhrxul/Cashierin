@@ -38,6 +38,46 @@ class ShiftScheduleController extends Controller
     }
 
     /**
+     * Get current and next shift schedule for the authenticated user.
+     */
+    public function currentAndNext(Request $request)
+    {
+        $user = $request->user();
+        $now = now();
+
+        // Current scheduled shift
+        $current = ShiftSchedule::where('user_id', $user->id)
+            ->where('start_time', '<=', $now)
+            ->where('end_time', '>=', $now)
+            ->where('status', 'scheduled')
+            ->first();
+
+        // Next scheduled shift
+        $next = ShiftSchedule::where('user_id', $user->id)
+            ->where('start_time', '>', $now)
+            ->where('status', 'scheduled')
+            ->orderBy('start_time', 'asc')
+            ->first();
+
+        // If no "current" (ongoing), check if the last scheduled shift for today just ended
+        $justEnded = null;
+        if (!$current) {
+            $justEnded = ShiftSchedule::where('user_id', $user->id)
+                ->where('end_time', '<', $now)
+                ->where('end_time', '>', $now->copy()->subHours(4)) // Within last 4 hours
+                ->orderBy('end_time', 'desc')
+                ->first();
+        }
+
+        return response()->json([
+            'current' => $current,
+            'next' => $next,
+            'just_ended' => $justEnded,
+            'server_time' => $now->toIso8601String()
+        ]);
+    }
+
+    /**
      * Menambah jadwal shift baru (Mendukung pemilihan banyak user).
      * HANYA Owner dan Manager yang bisa menambahkan jadwal untuk kasir.
      */

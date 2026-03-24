@@ -232,8 +232,7 @@ class ShiftController extends Controller
      */
     public function active(Request $request)
     {
-        $user = $request->user();
-        $shift = Shift::where('user_id', $user->id)
+        $shift = Shift::where('user_id', $request->user()->id)
             ->where('status', 'open')
             ->first();
 
@@ -241,25 +240,7 @@ class ShiftController extends Controller
             return response()->json(['message' => 'Tidak ada shift aktif.'], 404);
         }
 
-        // Get the schedule for this shift (if exists) or the closest one for today
-        $schedule = \App\Models\ShiftSchedule::where('user_id', $user->id)
-            ->whereDate('start_time', now()->toDateString())
-            ->orderBy('start_time', 'asc')
-            ->first();
-
-        // Get the NEXT shift in the store for handovers
-        $nextShift = \App\Models\ShiftSchedule::with('user:id,name')
-            ->where('store_id', $user->store_id)
-            ->where('start_time', '>=', now())
-            ->where('user_id', '!=', $user->id) // Different person
-            ->orderBy('start_time', 'asc')
-            ->first();
-
-        return response()->json([
-            'data' => $shift,
-            'schedule' => $schedule,
-            'next_shift' => $nextShift
-        ]);
+        return response()->json(['data' => $shift]);
     }
 
     /**
