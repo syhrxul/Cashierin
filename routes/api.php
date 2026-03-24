@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\LicenseKeyController;
+use App\Http\Controllers\Api\AnnouncementController;
 use App\Http\Controllers\Api\StoreController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\ProductController;
@@ -108,6 +109,10 @@ Route::middleware(['auth:sanctum', 'store.access', 'store.license', 'throttle:ap
     Route::get('/shifts/{id}/summary', [\App\Http\Controllers\Api\ShiftController::class, 'summary']);
     Route::post('/shifts/{id}/close', [\App\Http\Controllers\Api\ShiftController::class, 'close']);
     Route::apiResource('shifts', \App\Http\Controllers\Api\ShiftController::class);
+
+    // Announcement routes
+    Route::get('/announcements/dashboard', [AnnouncementController::class, 'dashboard']);
+    Route::apiResource('announcements', AnnouncementController::class);
 
     // Shift Schedule routes
     Route::get('/shift-schedules/current-and-next', [ShiftScheduleController::class, 'currentAndNext']);
