@@ -12,6 +12,7 @@ class Announcement extends Model
         'scope',
         'store_id',
         'target_user_ids',
+        'target_role',
         'created_by',
         'is_active',
         'priority'

@@ -35,6 +35,12 @@ class AnnouncementController extends Controller
             
         // Filter targeted users IF target_user_ids is not empty
         $filtered = $announcements->filter(function ($a) use ($user) {
+            // 1. If target_role is set, user MUST have that role (e.g. 'owner')
+            if (!empty($a->target_role) && $user->role !== $a->target_role) {
+                return false;
+            }
+
+            // 2. If target_user_ids is set, user MUST be in that list
             if (empty($a->target_user_ids)) return true;
             return in_array($user->id, $a->target_user_ids);
         });
@@ -103,7 +109,13 @@ class AnnouncementController extends Controller
         $user = $request->user();
         $announcement = Announcement::findOrFail($id);
 
-        if ($user->role !== 'superadmin' && $announcement->store_id !== $user->store_id) {
+        // ONLY Superadmin can edit Global news
+        if ($announcement->scope === 'global' && $user->role !== 'superadmin') {
+            return response()->json(['message' => 'Anda tidak memiliki akses untuk mengedit berita global.'], 403);
+        }
+
+        // For Store news, only owner/manager of that store can edit
+        if ($announcement->scope === 'store' && $user->role !== 'superadmin' && $announcement->store_id !== $user->store_id) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
@@ -112,7 +124,8 @@ class AnnouncementController extends Controller
             'content' => 'sometimes|string',
             'is_active' => 'sometimes|boolean',
             'priority' => 'sometimes|in:normal,important,critical',
-            'target_user_ids' => 'nullable|array'
+            'target_user_ids' => 'nullable|array',
+            'target_role' => 'nullable|string'
         ]);
 
         $announcement->update($request->all());
@@ -131,7 +144,11 @@ class AnnouncementController extends Controller
         $user = $request->user();
         $announcement = Announcement::findOrFail($id);
 
-        if ($user->role !== 'superadmin' && $announcement->store_id !== $user->store_id) {
+        if ($announcement->scope === 'global' && $user->role !== 'superadmin') {
+            return response()->json(['message' => 'Anda tidak memiliki akses untuk menghapus berita global.'], 403);
+        }
+
+        if ($announcement->scope === 'store' && $user->role !== 'superadmin' && $announcement->store_id !== $user->store_id) {
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
