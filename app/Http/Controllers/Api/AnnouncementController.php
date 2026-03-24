@@ -16,36 +16,35 @@ class AnnouncementController extends Controller
     {
         $user = $request->user();
         
-        $query = Announcement::with('creator')->where('is_active', true);
+        $query = Announcement::with(['creator', 'reads' => function($q) use ($user) {
+            $q->where('user_id', $user->id);
+        }])->where('is_active', true);
         
         $query->where(function ($q) use ($user) {
-            // Global scope
             $q->where('scope', 'global');
-            
-            // Store scope
             if ($user->store_id) {
                 $q->orWhere(function ($s) use ($user) {
-                    $s->where('scope', 'store')
-                      ->where('store_id', $user->store_id);
+                    $s->where('scope', 'store')->where('store_id', $user->store_id);
                 });
             }
         });
 
         $announcements = $query->latest()->get();
             
-        // Filter targeted users IF target_user_ids is not empty
         $filtered = $announcements->filter(function ($a) use ($user) {
-            // 1. If target_role is set (and not 'all' or empty), user MUST have that role (e.g. 'owner')
             if ($a->target_role && !in_array($a->target_role, ['', 'all']) && $user->role !== $a->target_role) {
                 return false;
             }
-
-            // 2. If target_user_ids is set (and not empty), user MUST be in that list
             if (!empty($a->target_user_ids) && count($a->target_user_ids) > 0) {
                 return in_array($user->id, $a->target_user_ids);
             }
-
             return true;
+        });
+
+        // Add 'is_read' flag based on reads relationship
+        $filtered->each(function($a) {
+            $a->is_read = $a->reads->isNotEmpty();
+            unset($a->reads); // Hide relation for cleaner output
         });
 
         return response()->json(['data' => $filtered->values()]);
@@ -58,14 +57,11 @@ class AnnouncementController extends Controller
     {
         $user = $request->user();
         
-        $query = Announcement::with(['creator', 'store']);
+        $query = Announcement::with(['creator', 'store'])->withCount('reads');
         
         if ($user->role === 'owner' || $user->role === 'manager') {
             $query->where(function ($q) use ($user) {
-                // Own store announcements
                 $q->where('store_id', $user->store_id);
-                
-                // Global announcements targeting this user's role OR all
                 $q->orWhere(function ($g) use ($user) {
                     $g->where('scope', 'global')
                       ->where(function ($roleQ) use ($user) {
@@ -80,17 +76,61 @@ class AnnouncementController extends Controller
         
         $announcements = $query->latest()->get();
 
-        // Mark as 'readonly' for UI if created by superadmin and current user isn't superadmin
         $announcements->each(function($a) use ($user) {
             $creatorRole = optional($a->creator)->role;
             $a->is_readonly = ($creatorRole === 'superadmin' && $user->role !== 'superadmin');
-            
-            // To ensure it serializes, we can use setAttribute or just rely on the object property 
-            // if we are sure it will be included. Eloquent models normally include dynamic properties 
-            // set during runtime in toArray/toJson if they are accessed.
         });
 
         return response()->json(['data' => $announcements]);
+    }
+
+    /**
+     * Menandai pengumuman sudah dibaca.
+     */
+    public function markAsRead(Request $request, $id)
+    {
+        $user = $request->user();
+        \App\Models\AnnouncementRead::updateOrCreate(
+            ['user_id' => $user->id, 'announcement_id' => $id],
+            ['read_at' => now()]
+        );
+        return response()->json(['message' => 'Read marked.']);
+    }
+
+    /**
+     * Hitung total pengumuman belum dibaca (untuk badge sidebar).
+     */
+    public function unreadCount(Request $request)
+    {
+        $user = $request->user();
+        
+        $activeAnnouncements = Announcement::where('is_active', true)
+            ->where(function ($query) use ($user) {
+                $query->where('scope', 'global');
+                if ($user->store_id) {
+                    $query->orWhere(function ($s) use ($user) {
+                        $s->where('scope', 'store')->where('store_id', $user->store_id);
+                    });
+                }
+            })
+            ->get();
+            
+        $unread = $activeAnnouncements->filter(function ($a) use ($user) {
+            // Targeting filters...
+            if ($a->target_role && !in_array($a->target_role, ['', 'all']) && $user->role !== $a->target_role) {
+                return false;
+            }
+            if (!empty($a->target_user_ids) && count($a->target_user_ids) > 0) {
+                if (!in_array($user->id, $a->target_user_ids)) return false;
+            }
+            
+            // Check if user has read it
+            return !\App\Models\AnnouncementRead::where('user_id', $user->id)
+                ->where('announcement_id', $a->id)
+                ->exists();
+        });
+
+        return response()->json(['count' => $unread->count()]);
     }
 
     /**

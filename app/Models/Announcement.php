@@ -32,4 +32,9 @@ class Announcement extends Model
     {
         return $this->belongsTo(Store::class);
     }
+
+    public function reads()
+    {
+        return $this->hasMany(\App\Models\AnnouncementRead::class);
+    }
 }
