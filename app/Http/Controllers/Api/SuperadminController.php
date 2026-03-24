@@ -35,6 +35,7 @@ class SuperadminController extends Controller
         // 3. System Volume
         $totalTransactions = Transaction::count();
         $totalProducts = Product::count();
+        $totalRevenue = Transaction::where('status', 'completed')->sum('total_amount');
         
         // 4. Financial/License Metrics (Assume full version is the primary revenue)
         $licenseStats = LicenseKey::select(
@@ -66,6 +67,7 @@ class SuperadminController extends Controller
                     'volume' => [
                         'transactions' => $totalTransactions,
                         'products' => $totalProducts,
+                        'revenue' => (float) $totalRevenue,
                     ],
                     'license' => [
                         'total_keys' => $licenseStats->total_keys ?? 0,
