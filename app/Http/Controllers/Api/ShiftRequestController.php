@@ -136,8 +136,19 @@ class ShiftRequestController extends Controller
             }
         }
 
+        // Jika owner ACC dengan memindahkan jadwal baru
+        if ($shiftRequest->type === 'change' && $request->has('new_start_time') && $request->has('new_end_time')) {
+            $shift = \App\Models\ShiftSchedule::find($shiftRequest->shift_id);
+            if ($shift) {
+                $shift->update([
+                    'start_time' => $request->new_start_time,
+                    'end_time' => $request->new_end_time
+                ]);
+            }
+        }
+
         return response()->json([
-            'message' => 'Permintaan shift disetujui (Final).',
+            'message' => 'Permintaan shift disetujui (Final). Jadwal telah diperbarui.',
             'data' => $shiftRequest
         ]);
     }
