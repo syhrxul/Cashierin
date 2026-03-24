@@ -67,8 +67,29 @@ class SupportTicketController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        $tickets = SupportTicket::with('user:id,name,username')
-            ->latest()
+        // Optimized query with specific prioritization:
+        // 1. Bugs (Technical issues)
+        // 2. Premium License (> 30 days)
+        // 3. Newest first
+        $tickets = SupportTicket::with('user.store')
+            ->select('support_tickets.*')
+            ->join('users', 'support_tickets.user_id', '=', 'users.id')
+            ->leftJoin('stores', 'users.store_id', '=', 'stores.id')
+            ->leftJoin('license_keys', function($join) {
+                $join->on('stores.id', '=', 'license_keys.store_id')
+                     ->where('license_keys.is_used', 1)
+                     ->orderBy('license_keys.used_at', 'desc')
+                     ->limit(1);
+            })
+            // PRIORITY 1: BUGS
+            ->orderByRaw("CASE WHEN support_tickets.category = 'bug' THEN 0 ELSE 1 END")
+            // PRIORITY 2: PREMIUM LICENSE (> 30 Days)
+            ->orderByRaw("CASE 
+                WHEN stores.license_type = 'full' AND license_keys.duration_days > 30 THEN 0 
+                ELSE 1 
+              END")
+            // PRIORITY 3: CHRONOLOGICAL (Newest First)
+            ->orderBy('support_tickets.created_at', 'desc')
             ->get();
 
         // Mark all as read by admin when viewing the list
