@@ -15,6 +15,13 @@ class SupportTicket extends Model
         'is_read_by_admin', 'is_read_by_user'
     ];
 
+    protected $appends = ['attachment_url'];
+
+    public function getAttachmentUrlAttribute()
+    {
+        return $this->attachment_path ? asset('storage/' . $this->attachment_path) : null;
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);
