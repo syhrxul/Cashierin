@@ -140,6 +140,9 @@ Route::middleware(['auth:sanctum', 'store.access', 'store.license', 'throttle:ap
     Route::post('/coupons/check', [\App\Http\Controllers\Api\CouponController::class, 'check']);
     Route::apiResource('coupons', \App\Http\Controllers\Api\CouponController::class);
 
+    // Promotion routes
+    Route::apiResource('promotions', \App\Http\Controllers\Api\PromotionController::class);
+
     // Support Ticket routes
     Route::get('/support/unread-count', [\App\Http\Controllers\Api\SupportTicketController::class, 'unreadCount']);
     Route::get('/support', [\App\Http\Controllers\Api\SupportTicketController::class, 'index']);
