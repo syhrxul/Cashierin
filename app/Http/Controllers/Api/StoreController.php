@@ -64,20 +64,42 @@ class StoreController extends Controller
             'user_id', 'name', 'address', 'business_hours', 'business_category'
         ]));
 
+        // === AUTO ASSIGN TRIAL LICENSE (30 DAYS) ===
+        $trialDays = 30;
+        $licenseKey = \App\Models\LicenseKey::create([
+            'key' => 'TRIAL-' . strtoupper(\Illuminate\Support\Str::random(12)),
+            'type' => 'trial',
+            'duration_days' => $trialDays,
+            'is_used' => true,
+            'used_by' => $request->user_id,
+            'used_at' => now(),
+            'expires_at' => now()->addDays($trialDays),
+            'store_id' => $store->id,
+        ]);
+
+        // Update Store Status
+        $store->update([
+            'status' => 'active',
+            'license_type' => 'trial',
+            'license_expires_at' => $licenseKey->expires_at,
+        ]);
+
         // Auto-assign store_id ke owner jika belum punya
         $owner = \App\Models\User::find($request->user_id);
         if ($owner && !$owner->store_id) {
             $owner->update(['store_id' => $store->id]);
         }
 
-        ActivityLog::log('store_created', "Toko baru berhasil dibuat: '{$store->name}' oleh @{$user->username}", [
+        ActivityLog::log('store_created', "Toko baru '{$store->name}' berhasil dibuat dengan lisensi Trial {$trialDays} hari.", [
             'store_id' => $store->id,
-            'owner_id' => $owner->id
+            'owner_id' => $owner->id,
+            'license_key' => $licenseKey->key
         ]);
 
         return response()->json([
-            'message' => 'Toko berhasil dibuat.',
-            'data' => $store
+            'status' => 'success',
+            'message' => 'Toko berhasil dibuat dengan lisensi Trial 30 hari.',
+            'data' => $store->load('owner')
         ], 201);
     }
 
