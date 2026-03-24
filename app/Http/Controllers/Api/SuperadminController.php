@@ -44,7 +44,7 @@ class SuperadminController extends Controller
         )->first();
 
         // 5. Recent Activity (Latest Stores)
-        $latestStores = Store::with('user:id,username')
+        $latestStores = Store::with('owner:id,username')
             ->latest()
             ->limit(5)
             ->get();
