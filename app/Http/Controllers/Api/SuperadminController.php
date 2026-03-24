@@ -79,13 +79,17 @@ class SuperadminController extends Controller
         ]);
     }
 
-    public function listUsers()
+    public function listUsers(Request $request)
     {
-        // Mendapatkan semua user dengan relasi toko untuk superadmin dashboard
-        $users = User::with('store')->latest()->get();
+        $query = User::with('store')->latest();
+        
+        if ($request->has('store_id')) {
+            $query->where('store_id', $request->store_id);
+        }
+
         return response()->json([
             'status' => 'success',
-            'data' => $users
+            'data' => $query->get()
         ]);
     }
 
