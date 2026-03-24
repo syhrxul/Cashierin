@@ -1,28 +1,31 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { apiFetch } from '@/lib/api';
 import {
-  LayoutDashboard,
-  Store,
-  Key,
-  Users,
-  Activity,
-  BarChart3,
-  Settings,
-  Tag,
-  LogOut,
-  ChevronLeft,
-  ChevronRight,
   ShoppingCart,
+  LayoutDashboard,
   Package,
+  Users,
+  Settings,
   FileText,
-  UserCircle,
-  ChevronDown,
   Clock,
+  LogOut,
+  ChevronDown,
+  Lock,
+  Calendar,
+  Zap,
+  Tag,
+  Store,
+  CreditCard,
+  ShieldCheck,
+  Megaphone,
+  Key,
   XCircle,
-  CheckCircle2,
-  Lock
+  BarChart3,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
@@ -35,6 +38,7 @@ const menuByRole: Record<Role, any[]> = {
         { icon: LayoutDashboard, label: 'Ringkasan', href: '/dashboard/superadmin' },
         { icon: Store, label: 'Daftar Toko', href: '/dashboard/superadmin/toko' },
         { icon: Key, label: 'Serial License', href: '/dashboard/superadmin/license' },
+        { icon: Megaphone, label: 'Pengumuman', href: '/dashboard/superadmin/announcements' },
         {
           icon: Users,
           label: 'Semua Pengguna',
@@ -60,6 +64,7 @@ const menuByRole: Record<Role, any[]> = {
         { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard/owner' },
         { icon: ShoppingCart, label: 'Kasir (POS)', href: '/dashboard/kasir' },
         { icon: Users, label: 'Karyawan', href: '/dashboard/owner/employees' },
+        { icon: Megaphone, label: 'Pengumuman', href: '/dashboard/owner/announcements' },
         {
           icon: Clock,
           label: 'Manajemen Shift',
@@ -88,6 +93,7 @@ const menuByRole: Record<Role, any[]> = {
         { icon: Package, label: 'Manajemen Stok', href: '/dashboard/manager/inventory' },
         { icon: FileText, label: 'Riwayat Bill', href: '/dashboard/kasir/history' },
         { icon: FileText, label: 'Reports', href: '/dashboard/manager/reports' },
+        { icon: Megaphone, label: 'Pengumuman', href: '/dashboard/manager/announcements' },
       ]
     },
   ],
@@ -95,6 +101,7 @@ const menuByRole: Record<Role, any[]> = {
     {
       label: 'Point of Sale', items: [
         { icon: ShoppingCart, label: 'Jual (POS)', href: '/dashboard/kasir' },
+        { icon: Megaphone, label: 'Pengumuman', href: '/dashboard/kasir/announcements' },
         { icon: Tag, label: 'Info Diskon', href: '/dashboard/kasir/discounts' },
         { icon: FileText, label: 'Riwayat Bill', href: '/dashboard/kasir/history' },
         { icon: Clock, label: 'Jadwal & Shift', href: '/dashboard/kasir/profile' },
@@ -110,14 +117,28 @@ export default function DashboardSidebar() {
   const [role, setRole] = useState<Role>('superadmin');
   const [expandedMenus, setExpandedMenus] = useState<string[]>(['Semua Pengguna']);
 
+  const [unreadCount, setUnreadCount] = useState(0);
+
   useEffect(() => {
     const userJson = localStorage.getItem('user');
     if (userJson) {
       const u = JSON.parse(userJson);
       setUser(u);
       setRole((u.role?.toLowerCase() || 'superadmin') as Role);
+      fetchUnreadCount();
     }
+
+    const handleUpdate = () => fetchUnreadCount();
+    window.addEventListener('announcementCountUpdate', handleUpdate);
+    return () => window.removeEventListener('announcementCountUpdate', handleUpdate);
   }, []);
+
+  const fetchUnreadCount = async () => {
+    try {
+      const res: any = await apiFetch('/announcements/unread-count');
+      setUnreadCount(res.count || 0);
+    } catch (err) { console.error(err); }
+  };
 
   const groups = menuByRole[role] || [];
   const isPending = user?.approval_status === 'pending';
@@ -179,7 +200,15 @@ export default function DashboardSidebar() {
                             }`}
                         >
                           <item.icon size={20} className={`${isActive && !isExpanded ? 'text-white' : 'text-[#94A3B8] group-hover:text-[#4F46E5]'}`} />
-                          <span className="text-[13px] whitespace-nowrap truncate">{item.label}</span>
+                          <span className="text-[13.5px] whitespace-nowrap truncate">{item.label}</span>
+
+                          {/* Announcement Badge */}
+                          {item.label === 'Pengumuman' && unreadCount > 0 && (
+                            <span className="absolute right-4 w-5 h-5 bg-rose-500 text-white text-[9px] font-black rounded-full flex items-center justify-center animate-bounce shadow-lg shadow-rose-200">
+                              {unreadCount}
+                            </span>
+                          )}
+
                           <ChevronDown size={14} className={`ml-auto transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
                         </button>
 
@@ -216,10 +245,17 @@ export default function DashboardSidebar() {
                       >
                         <item.icon size={20} className={`${isActive ? 'text-white' : 'text-[#94A3B8] group-hover:text-[#4F46E5] transition-colors'} ${isLocked ? 'blur-[0.5px]' : ''}`} />
                         {!isCollapsed && (
-                          <span className="text-[13px] whitespace-nowrap truncate">{item.label}</span>
+                          <>
+                            <span className="text-[13px] whitespace-nowrap truncate">{item.label}</span>
+                            {item.label === 'Pengumuman' && unreadCount > 0 && (
+                              <span className="absolute right-4 w-5 h-5 bg-rose-500 text-white text-[9px] font-black rounded-full flex items-center justify-center animate-bounce shadow-lg shadow-rose-200">
+                                {unreadCount}
+                              </span>
+                            )}
+                          </>
                         )}
                         {isLocked && !isCollapsed && <Lock size={12} className="ml-auto text-slate-300" />}
-                        {isActive && !isCollapsed && !isLocked && <div className="ml-auto w-1 h-1 rounded-full bg-white/40" />}
+                        {isActive && !isLocked && unreadCount === 0 && <div className="ml-auto w-1 h-1 rounded-full bg-white/40" />}
                       </Link>
                     )}
                   </div>

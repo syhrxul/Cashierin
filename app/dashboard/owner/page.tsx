@@ -29,6 +29,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
+import AnnouncementOverlay from '@/components/announcements/AnnouncementOverlay';
 
 export default function OwnerDashboard() {
   const router = useRouter();
@@ -365,7 +366,8 @@ export default function OwnerDashboard() {
       })()}
 
       {/* Header View */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 bg-white p-10 rounded-[3rem] border border-slate-200/60 shadow-xl shadow-slate-100/50">
+      <AnnouncementOverlay />
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16 bg-white p-12 rounded-[3.5rem] border border-slate-200/60 shadow-xl shadow-slate-100/50 relative overflow-hidden">
         <div className="flex items-center gap-6">
           <div className="w-20 h-20 rounded-[2rem] bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100 shrink-0">
             <Store size={32} />

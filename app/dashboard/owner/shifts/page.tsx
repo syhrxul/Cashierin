@@ -177,20 +177,57 @@ export default function OwnerShiftsPage() {
     setIsDetailModalOpen(true);
   };
 
-  const handleBulkUpdate = async (e: React.FormEvent) => {
+  const handleBulkUpdate = async (e: React.FormEvent, data: { updateIds: number[], deleteIds: number[], newUsers: number[] }) => {
     e.preventDefault();
+    const { updateIds, deleteIds, newUsers } = data;
+
+    if (updateIds.length === 0 && deleteIds.length === 0 && newUsers.length === 0) return;
+
     try {
       setSubmitLoading(true);
-      await apiFetch('/shift-schedules/bulk-update', {
-        method: 'POST',
-        body: JSON.stringify({
-          ids: selectedShifts,
-          start_time: `${form.start_date} ${form.start_time}:00`,
-          end_time: `${form.end_date} ${form.end_time}:00`,
-          notes: form.notes
-        })
-      });
-      setMessage({ type: 'success', text: `${selectedShifts.length} jadwal berhasil diperbarui` });
+
+      const startTimeStr = `${form.start_date} ${form.start_time}:00`;
+      const endTimeStr = `${form.end_date} ${form.end_time}:00`;
+
+      const promises = [];
+
+      // 1. UPDATE EXISTING
+      if (updateIds.length > 0) {
+        promises.push(apiFetch('/shift-schedules/bulk-update', {
+          method: 'POST',
+          body: JSON.stringify({
+            ids: updateIds,
+            start_time: startTimeStr,
+            end_time: endTimeStr,
+            notes: form.notes
+          })
+        }));
+      }
+
+      // 2. DELETE REMOVED
+      if (deleteIds.length > 0) {
+        promises.push(apiFetch('/shift-schedules/bulk-destroy', {
+          method: 'POST',
+          body: JSON.stringify({ ids: deleteIds })
+        }));
+      }
+
+      // 3. CREATE NEW
+      if (newUsers.length > 0) {
+        promises.push(apiFetch('/shift-schedules', {
+          method: 'POST',
+          body: JSON.stringify({
+            user_ids: newUsers,
+            start_time: startTimeStr,
+            end_time: endTimeStr,
+            notes: form.notes
+          })
+        }));
+      }
+
+      await Promise.all(promises);
+
+      setMessage({ type: 'success', text: 'Perubahan jadwal berhasil disimpan' });
       setIsEditModalOpen(false);
       setSelectedShifts([]);
       fetchData();
@@ -428,7 +465,17 @@ export default function OwnerShiftsPage() {
 
       {/* Modals */}
       {isAddModalOpen && <AddShiftModal onClose={() => setIsAddModalOpen(false)} form={form} setForm={setForm} onSubmit={handleAddShift} loading={actionLoading} employees={employees} />}
-      {isEditModalOpen && <BulkEditModal onClose={() => setIsEditModalOpen(false)} form={form} setForm={setForm} onSubmit={handleBulkUpdate} loading={submitLoading} selectedCount={selectedShifts.length} />}
+      {isEditModalOpen && (
+        <BulkEditModal
+          onClose={() => setIsEditModalOpen(false)}
+          form={form}
+          setForm={setForm}
+          onSubmit={handleBulkUpdate}
+          loading={submitLoading}
+          selectedShiftsObjects={shifts.filter(s => selectedShifts.includes(s.id))}
+          allEmployees={employees}
+        />
+      )}
       {isGenerateModalOpen && <GenerateModal onClose={() => setIsGenerateModalOpen(false)} form={generateForm} setForm={setGenerateForm} onSubmit={handleGenerateShifts} loading={submitLoading} templates={templates} />}
       {isTemplateModalOpen && <ShiftTemplateModal onClose={() => setIsTemplateModalOpen(false)} form={templateForm} setForm={setTemplateForm} onSubmit={handleSaveTemplate} loading={submitLoading} storeLimit={store?.shift_limit_hours || 8} />}
       {isDetailModalOpen && <ShiftDetailModal onClose={() => setIsDetailModalOpen(false)} group={selectedDetailGroup} calculateHours={calculateHours} />}

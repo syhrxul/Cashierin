@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api';
+import AnnouncementOverlay from '@/components/announcements/AnnouncementOverlay';
 
 export default function SuperAdminDashboard() {
   const router = useRouter();
@@ -118,6 +119,7 @@ export default function SuperAdminDashboard() {
 
   return (
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-1000 pb-20">
+      <AnnouncementOverlay />
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 bg-white/70 backdrop-blur-xl p-10 rounded-[3.5rem] border border-white/60 shadow-xl shadow-slate-200/40">
         <div className="space-y-1">

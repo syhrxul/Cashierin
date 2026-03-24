@@ -20,13 +20,16 @@ import {
   Info,
   Lock,
   Ticket,
-  Sparkles
+  Sparkles,
+  AlertCircle,
+  Clock
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import DiscountListModal from './components/DiscountListModal';
 import PaymentModal from './components/PaymentModal';
 import ShiftOpeningOverlay from './components/ShiftOpeningOverlay';
 import ShiftClosingModal from './components/ShiftClosingModal';
+import AnnouncementOverlay from '@/components/announcements/AnnouncementOverlay';
 
 interface Product {
   id: number;
@@ -64,6 +67,7 @@ export default function KasirPOSPage() {
   const [isShiftOverlayOpen, setIsShiftOverlayOpen] = useState(false);
   const [isClosingModalOpen, setIsClosingModalOpen] = useState(false);
   const [availableDiscounts, setAvailableDiscounts] = useState<any[]>([]);
+  const [scheduleData, setScheduleData] = useState<any>(null);
 
   const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
   const tax = (subtotal - discount) * 0.11;
@@ -106,6 +110,11 @@ export default function KasirPOSPage() {
         // If 404 or any error, we show the overlay
         setIsShiftOverlayOpen(true);
       }
+
+      // Check Schedule
+      const schedRes: any = await apiFetch('/shift-schedules/current-and-next');
+      setScheduleData(schedRes);
+
     } catch (err: any) {
       console.error('[POS] Load failed:', err);
       setErrorMsg(err.message || 'Respons sistem gagal.');
@@ -117,6 +126,12 @@ export default function KasirPOSPage() {
   useEffect(() => {
     fetchData();
     setOrderId(Math.floor(Math.random() * 899) + 100);
+
+    // Refresh schedule every 5 minutes
+    const interval = setInterval(() => {
+      apiFetch('/shift-schedules/current-and-next').then(res => setScheduleData(res)).catch(() => { });
+    }, 5 * 60 * 1000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleJoinStore = async (e: React.FormEvent) => {
@@ -304,8 +319,91 @@ export default function KasirPOSPage() {
 
   return (
     <div className="flex h-[calc(100vh-80px)] overflow-hidden animate-in fade-in duration-700 bg-[#F1F5F9]/30">
+      <AnnouncementOverlay />
       {/* Product Section */}
       <div className="flex-1 flex flex-col p-8 space-y-8 overflow-y-auto custom-scrollbar">
+
+        {/* SHIFT SCHEDULE ALERT */}
+        {scheduleData && (
+          <div className="animate-in slide-in-from-top-4 duration-500">
+            {/* ALERT: SHIFT ENDED BUT STILL LOGGED IN */}
+            {scheduleData.just_ended && activeShift && (
+              <div className="bg-gradient-to-r from-rose-600 to-rose-700 p-6 rounded-[2.5rem] shadow-xl shadow-rose-100 text-white flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden relative group">
+                <div className="absolute right-0 top-0 p-8 opacity-10 rotate-12 group-hover:rotate-45 transition-transform duration-1000">
+                  <Clock size={160} />
+                </div>
+                <div className="flex items-center gap-6 relative z-10">
+                  <div className="w-16 h-16 bg-white/20 rounded-3xl flex items-center justify-center backdrop-blur-md">
+                    <AlertCircle size={32} className="text-white animate-bounce" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black tracking-tighter">Waktu Shift Anda Telah Berakhir!</h3>
+                    <p className="text-rose-100 text-sm font-medium">Jadwal anda selesai pada {new Date(scheduleData.just_ended.end_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}. Harap segera tutup shift.</p>
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-2 relative z-10">
+                  {scheduleData.next ? (
+                    <div className="text-right">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-rose-200">Shift Selanjutnya:</p>
+                      <p className="text-sm font-black whitespace-nowrap">{new Date(scheduleData.next.start_time).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} pukul {new Date(scheduleData.next.start_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</p>
+                    </div>
+                  ) : (
+                    <p className="text-[10px] font-black uppercase tracking-widest text-rose-200 bg-rose-800/40 px-3 py-1 rounded-lg border border-rose-500/30">Tidak ada shift terjadwal lagi</p>
+                  )}
+                  <button
+                    onClick={() => setIsClosingModalOpen(true)}
+                    className="mt-2 bg-white text-rose-600 px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg hover:bg-rose-50 transition-all active:scale-95"
+                  >
+                    TUTUP SHIFT SEKARANG
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* INFO: NO CURRENT SCHEDULE BUT SHIFT IS OPEN (OFF-SCHEDULE WORKING) */}
+            {!scheduleData.current && !scheduleData.just_ended && activeShift && (
+              <div className="bg-amber-50 border border-amber-200/60 p-5 rounded-[2rem] flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center"><Info size={20} /></div>
+                  <div>
+                    <p className="text-xs font-black text-amber-800 uppercase tracking-tight">Anda sedang bekerja di luar jadwal</p>
+                    <p className="text-[10px] font-medium text-amber-600">Pastikan anda sudah mendapat izin dari Manager/Owner untuk shift tambahan ini.</p>
+                  </div>
+                </div>
+                {scheduleData.next && (
+                  <div className="text-right border-l border-amber-200 pl-4">
+                    <p className="text-[9px] font-black text-amber-400 uppercase">Shift Terdekat:</p>
+                    <p className="text-[10px] font-black text-amber-700">{new Date(scheduleData.next.start_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* INFO: JUST ENDED BUT NO OPEN SHIFT (CLEAN FINISH) */}
+            {scheduleData.just_ended && !activeShift && (
+              <div className="bg-emerald-50 border border-emerald-200/60 p-5 rounded-[2rem] flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center"><Sparkles size={20} /></div>
+                  <div>
+                    <p className="text-xs font-black text-emerald-800 uppercase tracking-tight">Shift Anda telah Selesai & Tertutup</p>
+                    <p className="text-[10px] font-medium text-emerald-600">Terima kasih atas kerja keras anda hari ini! Silakan hubungi owner jika ada kendala.</p>
+                  </div>
+                </div>
+                {scheduleData.next ? (
+                  <div className="text-right bg-white/50 p-2 rounded-xl border border-emerald-100">
+                    <p className="text-[9px] font-black text-emerald-400 uppercase">Shift Selanjutnya:</p>
+                    <p className="text-xs font-black text-emerald-700">{new Date(scheduleData.next.start_time).toLocaleTimeString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+                  </div>
+                ) : (
+                  <div className="text-[10px] font-black text-emerald-700 uppercase italic text-right">
+                    Toko dapat ditutup sekarang.<br />Hubungi Owner atau Manager untuk jadwal selanjutnya.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-1">
             <h1 className="text-3xl font-black text-[#0F172A] tracking-tighter">Sistem Kasir</h1>
