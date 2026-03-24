@@ -15,6 +15,7 @@ export default function SuperadminSupportPage() {
   const [feedbackText, setFeedbackText] = useState('');
   const [submitLoading, setSubmitLoading] = useState(false);
   const [filter, setFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [search, setSearch] = useState('');
 
   useEffect(() => {
@@ -54,10 +55,15 @@ export default function SuperadminSupportPage() {
   };
 
   const filtered = tickets.filter(t => {
-    const matchesFilter = filter === 'all' || t.status === filter;
+    // 'all' now only shows actionable tickets (open or in progress)
+    const isActionable = t.status === 'open' || t.status === 'in_progress';
+    const matchesStatus = filter === 'all' ? isActionable : t.status === filter;
+
+    const matchesCategory = categoryFilter === 'all' || t.category === categoryFilter;
+
     const matchesSearch = t.title.toLowerCase().includes(search.toLowerCase()) ||
       t.user?.name.toLowerCase().includes(search.toLowerCase());
-    return matchesFilter && matchesSearch;
+    return matchesStatus && matchesCategory && matchesSearch;
   });
 
   return (
@@ -99,6 +105,18 @@ export default function SuperadminSupportPage() {
                 className={`flex-1 h-12 min-w-[110px] rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${filter === f ? 'bg-[#0F172A] text-white shadow-xl shadow-slate-200' : 'bg-white text-slate-400 border border-slate-50 hover:bg-slate-50'}`}
               >
                 {f.replace('_', ' ')}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+            {['all', 'bug', 'complaint', 'suggestion'].map(c => (
+              <button
+                key={c}
+                onClick={() => setCategoryFilter(c)}
+                className={`flex-none h-10 px-6 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all ${categoryFilter === c ? 'bg-indigo-600 text-white' : 'bg-slate-50 text-slate-400 border border-indigo-50/20'}`}
+              >
+                {c === 'all' ? 'Semua Tipe' : c}
               </button>
             ))}
           </div>

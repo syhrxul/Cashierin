@@ -23,6 +23,7 @@ export default function OwnerSupportPage() {
     category: 'complaint',
     attachment: null as File | null
   });
+  const [filter, setFilter] = useState('active'); // active, resolved, rejected
 
   useEffect(() => {
     fetchTickets();
@@ -120,6 +121,13 @@ export default function OwnerSupportPage() {
     }
   };
 
+  const filteredTickets = tickets.filter(t => {
+    if (filter === 'active') return t.status === 'open' || t.status === 'in_progress';
+    if (filter === 'resolved') return t.status === 'resolved';
+    if (filter === 'rejected') return t.status === 'rejected';
+    return true;
+  });
+
   return (
     <div className="max-w-7xl mx-auto p-6 md:p-10 space-y-10 animate-in fade-in duration-700">
 
@@ -170,19 +178,35 @@ export default function OwnerSupportPage() {
 
         {/* Ticket List Panel */}
         <div className="lg:col-span-2 space-y-6">
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+            {[
+              { id: 'active', label: 'Semua Aktif', icon: Clock },
+              { id: 'resolved', label: 'Approved / Selesai', icon: CheckCircle2 },
+              { id: 'rejected', label: 'Ditolak', icon: XCircle }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setFilter(tab.id)}
+                className={`px-6 h-12 rounded-2xl flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${filter === tab.id ? 'bg-[#0F172A] text-white shadow-xl' : 'bg-white text-slate-400 border border-slate-100 hover:bg-slate-50'}`}
+              >
+                <tab.icon size={14} /> {tab.label}
+              </button>
+            ))}
+          </div>
+
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-30">
               <Loader2 size={48} className="animate-spin text-indigo-600" />
               <p className="text-[10px] font-black uppercase tracking-widest">Sinkronisasi data...</p>
             </div>
-          ) : tickets.length === 0 ? (
+          ) : filteredTickets.length === 0 ? (
             <div className="bg-white p-20 rounded-[3rem] text-center border-2 border-dashed border-slate-100 italic opacity-30">
               <LifeBuoy size={64} className="mx-auto mb-4" />
-              <p className="font-black uppercase tracking-widest text-xs">Belum ada laporan kendala</p>
+              <p className="font-black uppercase tracking-widest text-xs">Tidak ada laporan di kategori ini</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {tickets.map(t => (
+              {filteredTickets.map(t => (
                 <div
                   key={t.id}
                   onClick={() => viewTicket(t)}
