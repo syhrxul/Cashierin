@@ -118,7 +118,7 @@ class SupportTicketController extends Controller
         // Case 2: Superadmin provides feedback or updates status
         if ($request->user()->role === 'superadmin') {
             $request->validate([
-                'status'         => 'sometimes|in:open,in_progress,resolved,closed',
+                'status'         => 'sometimes|in:open,in_progress,resolved,rejected,closed',
                 'admin_feedback' => 'nullable|string'
             ]);
 
