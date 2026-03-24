@@ -14,9 +14,12 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ShiftScheduleController;
 use App\Http\Controllers\Api\ShiftTimeDefinitionController;
 
+use App\Http\Controllers\Api\PublicController;
+
 // =============================================
 // PUBLIC ROUTES (Anti-Spam Login/Register)
 // =============================================
+Route::get('/public/stats', [PublicController::class, 'stats']);
 Route::middleware('throttle:auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/register/invite', [AuthController::class, 'registerByInvite']);
