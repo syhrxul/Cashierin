@@ -3,12 +3,9 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Traits\BelongsToStore;
 
 class Announcement extends Model
 {
-    use BelongsToStore;
-
     protected $fillable = [
         'title',
         'content',
