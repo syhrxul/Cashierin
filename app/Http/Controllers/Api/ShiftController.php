@@ -26,6 +26,33 @@ class ShiftController extends Controller
             $query->where('status', $request->status);
         }
 
+        if ($request->has('start_date') && $request->has('end_date')) {
+            $query->whereBetween('started_at', [$request->start_date . ' 00:00:00', $request->end_date . ' 23:59:59']);
+        } else if ($request->has('date')) {
+            $query->whereDate('started_at', $request->date);
+        }
+
+        // Include total sales for reporting features
+        $query->withSum(['transactions as total_sales' => function($q) {
+            $q->where('status', 'completed');
+        }], 'total_amount');
+        
+        $query->withSum(['transactions as total_cash_sales' => function($q) {
+            $q->where('status', 'completed')->where('payment_method', 'cash');
+        }], 'total_amount');
+        
+        $query->withSum(['transactions as total_qris_sales' => function($q) {
+            $q->where('status', 'completed')->where('payment_method', 'qris');
+        }], 'total_amount');
+        
+        $query->withSum(['transactions as total_debit_sales' => function($q) {
+            $q->where('status', 'completed')->where('payment_method', 'debit');
+        }], 'total_amount');
+        
+        $query->withCount(['transactions as completed_transactions_count' => function($q) {
+            $q->where('status', 'completed');
+        }]);
+
         return response()->json([
             'data' => $query->latest()->get()
         ]);
