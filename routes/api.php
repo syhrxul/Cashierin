@@ -84,9 +84,6 @@ Route::middleware(['auth:sanctum', 'store.access', 'throttle:api'])->group(funct
     Route::post('/license/activate', [LicenseKeyController::class, 'activate']);
 });
 
-// =============================================
-// STORE-SCOPED ROUTES (Requires Active/Grace License)
-// =============================================
 Route::middleware(['auth:sanctum', 'store.access', 'store.license', 'throttle:api', 'lastseen'])->group(function () {
     // Store management
     Route::get('/store/invite-code', [StoreController::class, 'inviteCode']);
@@ -143,6 +140,14 @@ Route::middleware(['auth:sanctum', 'store.access', 'store.license', 'throttle:ap
     Route::post('/coupons/check', [\App\Http\Controllers\Api\CouponController::class, 'check']);
     Route::apiResource('coupons', \App\Http\Controllers\Api\CouponController::class);
 
-    // Promotion routes
-    Route::apiResource('promotions', \App\Http\Controllers\Api\PromotionController::class);
+    // Support Ticket routes
+    Route::get('/support/unread-count', [\App\Http\Controllers\Api\SupportTicketController::class, 'unreadCount']);
+    Route::get('/support', [\App\Http\Controllers\Api\SupportTicketController::class, 'index']);
+    Route::post('/support', [\App\Http\Controllers\Api\SupportTicketController::class, 'store']);
+    Route::put('/support/{id}', [\App\Http\Controllers\Api\SupportTicketController::class, 'update']);
+    
+    // Superadmin specific Support
+    Route::middleware(['superadmin'])->group(function() {
+        Route::get('/superadmin/support', [\App\Http\Controllers\Api\SupportTicketController::class, 'indexAll']);
+    });
 });
