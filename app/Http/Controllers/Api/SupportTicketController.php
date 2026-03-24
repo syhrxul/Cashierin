@@ -84,25 +84,50 @@ class SupportTicketController extends Controller
     {
         $ticket = SupportTicket::findOrFail($id);
 
+        // Case 1: Owner updates their own ticket (Edit or Mark as read)
+        if ($request->user()->id === $ticket->user_id) {
+            if ($request->has('title') || $request->has('description')) {
+                // Real edit
+                $request->validate([
+                    'title'       => 'sometimes|string|max:255',
+                    'description' => 'sometimes|string',
+                    'category'    => 'sometimes|in:bug,suggestion,complaint',
+                    'attachment'  => 'nullable|image|max:2048'
+                ]);
+
+                $data = $request->only(['title', 'description', 'category']);
+
+                if ($request->hasFile('attachment')) {
+                    if ($ticket->attachment_path) {
+                        Storage::disk('public')->delete($ticket->attachment_path);
+                    }
+                    $data['attachment_path'] = $request->file('attachment')->store('support-attachments', 'public');
+                }
+
+                $ticket->update($data);
+                $ticket->is_read_by_admin = false; // Reset admin read status so they see the edit
+            } else {
+                // Just marking as read by user
+                $ticket->is_read_by_user = true;
+            }
+            
+            $ticket->save();
+            return response()->json(['status' => 'success', 'data' => $ticket]);
+        }
+
+        // Case 2: Superadmin provides feedback or updates status
         if ($request->user()->role === 'superadmin') {
             $request->validate([
-                'status' => 'sometimes|in:open,in_progress,resolved,closed',
+                'status'         => 'sometimes|in:open,in_progress,resolved,closed',
                 'admin_feedback' => 'nullable|string'
             ]);
 
             $ticket->update($request->only(['status', 'admin_feedback']));
-            $ticket->is_read_by_user = false;
+            $ticket->is_read_by_user = false; // Notify owner
             $ticket->is_read_by_admin = true;
             $ticket->save();
 
             return response()->json(['status' => 'success', 'data' => $ticket]);
-        }
-        
-        // Owner only marks as read
-        if ($request->user()->id === $ticket->user_id) {
-            $ticket->is_read_by_user = true;
-            $ticket->save();
-            return response()->json(['status' => 'success']);
         }
 
         return response()->json(['message' => 'Unauthorized'], 403);
