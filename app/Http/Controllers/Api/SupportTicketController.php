@@ -48,7 +48,14 @@ class SupportTicketController extends Controller
             'is_read_by_user' => true,
         ]);
 
-        return response()->json(['status' => 'success', 'data' => $ticket]);
+        return response()->json([
+            'status' => 'success', 
+            'data' => $ticket,
+            'debug' => [
+                'has_file' => $request->hasFile('attachment'),
+                'file_keys' => array_keys($request->allFiles()),
+            ]
+        ]);
     }
 
     /**
@@ -115,5 +122,23 @@ class SupportTicketController extends Controller
         }
 
         return response()->json(['status' => 'success', 'count' => $count]);
+    }
+
+    public function destroy(Request $request, $id)
+    {
+        $ticket = SupportTicket::findOrFail($id);
+
+        if ($request->user()->id !== $ticket->user_id && $request->user()->role !== 'superadmin') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        // Delete attachment if exists
+        if ($ticket->attachment_path) {
+            Storage::disk('public')->delete($ticket->attachment_path);
+        }
+
+        $ticket->delete();
+
+        return response()->json(['status' => 'success', 'message' => 'Laporan berhasil dihapus.']);
     }
 }

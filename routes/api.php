@@ -145,6 +145,7 @@ Route::middleware(['auth:sanctum', 'store.access', 'store.license', 'throttle:ap
     Route::get('/support', [\App\Http\Controllers\Api\SupportTicketController::class, 'index']);
     Route::post('/support', [\App\Http\Controllers\Api\SupportTicketController::class, 'store']);
     Route::put('/support/{id}', [\App\Http\Controllers\Api\SupportTicketController::class, 'update']);
+    Route::delete('/support/{id}', [\App\Http\Controllers\Api\SupportTicketController::class, 'destroy']);
     
     // Superadmin specific Support
     Route::middleware(['superadmin'])->group(function() {
