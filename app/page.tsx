@@ -18,6 +18,8 @@ import {
    X
 } from 'lucide-react';
 
+import Logo from '@/components/Logo';
+
 export default function LandingPage() {
    const [isLogged, setIsLogged] = useState(false);
    const [scrolled, setScrolled] = useState(false);
@@ -51,11 +53,8 @@ export default function LandingPage() {
          <nav className={`fixed w-full z-[100] transition-all duration-500 ${scrolled ? 'py-4' : 'py-8'}`}>
             <div className="max-w-7xl mx-auto px-4 md:px-8">
                <div className={`flex items-center justify-between p-3 rounded-[2rem] transition-all duration-500 ${scrolled ? 'bg-white/70 backdrop-blur-2xl border border-white/40 shadow-2xl shadow-slate-200/50' : 'bg-transparent border-transparent'}`}>
-                  <div className="flex items-center gap-3 md:gap-4 px-4">
-                     <div className="w-10 h-10 bg-[#4F46E5] rounded-xl flex items-center justify-center text-white shadow-[0_8px_16px_rgba(79,70,229,0.3)] shrink-0">
-                        <Store size={22} strokeWidth={2.5} />
-                     </div>
-                     <span className="text-xl md:text-2xl font-black tracking-tighter text-[#0F172A] uppercase">Cashierin.</span>
+                  <div className="px-4">
+                     <Logo />
                   </div>
 
                   <div className="hidden lg:flex items-center gap-10">
@@ -290,12 +289,7 @@ export default function LandingPage() {
                   </div>
                </div>
                <div className="mt-24 pt-12 border-t border-slate-200 flex flex-col md:flex-row items-center justify-between gap-10">
-                  <div className="flex items-center gap-4">
-                     <div className="w-8 h-8 bg-[#4F46E5] rounded-xl flex items-center justify-center text-white shadow-lg">
-                        <Store size={18} strokeWidth={2.5} />
-                     </div>
-                     <span className="text-xl font-black tracking-tighter text-[#0F172A] uppercase">Cashierin.</span>
-                  </div>
+                  <Logo />
                   <p className="text-xs font-black uppercase tracking-widest text-slate-300">© 2026 Cashierin Ecosystem. All rights reserved.</p>
                   <div className="flex items-center gap-8">
                      {['Privacy', 'Terms', 'Support'].map(f => (

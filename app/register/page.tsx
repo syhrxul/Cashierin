@@ -1,5 +1,6 @@
 'use client';
 
+
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -18,6 +19,8 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
+
+import Logo from '@/components/Logo';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -126,10 +129,9 @@ export default function RegisterPage() {
 
           <div className="relative z-10 flex flex-col gap-10">
             <div>
-              <Link href="/" className="inline-flex items-center gap-3 bg-white/20 backdrop-blur-xl px-5 py-3 rounded-2xl hover:bg-white/30 transition-all group">
-                <Store size={20} className="group-hover:scale-110 transition-transform" />
-                <span className="font-black uppercase tracking-widest text-[11px]">Cashierin Platform</span>
-              </Link>
+              <div className="mb-2">
+                <Logo dark />
+              </div>
             </div>
 
             <div className="space-y-3">

@@ -114,7 +114,10 @@ const menuByRole: Record<Role, any[]> = {
   ],
 };
 
+import Logo from '@/components/Logo';
+
 export default function DashboardSidebar() {
+  // ... rest of imports/state ...
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [user, setUser] = useState<any>(null);
@@ -171,16 +174,7 @@ export default function DashboardSidebar() {
   return (
     <aside className={`flex flex-col bg-white border-r border-[#E2E8F0] h-screen transition-all duration-300 relative z-50 ${isCollapsed ? 'w-20' : 'w-72'}`}>
       <div className="h-20 flex items-center px-6 mb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-indigo-600 rounded-lg flex items-center justify-center text-white shrink-0 shadow-lg shadow-indigo-100">
-            <Store size={20} />
-          </div>
-          {!isCollapsed && (
-            <h2 className="text-xl font-black text-[#0F172A] tracking-tighter uppercase whitespace-nowrap overflow-hidden animate-in fade-in duration-500">
-              Cashierin
-            </h2>
-          )}
-        </div>
+        <Logo showText={!isCollapsed} />
       </div>
 
       <nav className="flex-1 px-4 space-y-8 overflow-y-auto custom-scrollbar pb-10">

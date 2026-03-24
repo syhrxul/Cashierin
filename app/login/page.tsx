@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { User, Lock, Loader2, Store, AlertCircle } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 
+import Logo from '@/components/Logo';
+
 export default function LoginPage() {
   const router = useRouter();
   const [login_id, setLoginId] = useState('');
@@ -105,10 +107,7 @@ export default function LoginPage() {
 
         <div className="max-w-md text-white relative z-10">
           <div className="mb-12">
-            <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center mb-8 shadow-2xl">
-              <Store size={36} className="text-white" />
-            </div>
-            <h1 className="text-5xl font-black tracking-tighter mb-4 leading-tight">CASHIERIN.</h1>
+            <Logo dark className="mb-8" />
             <p className="text-xl text-indigo-100 font-medium leading-relaxed opacity-90">
               Satu sistem untuk mengelola seluruh aspek bisnis ritel dan restoran Anda dengan performa tinggi.
             </p>
@@ -127,8 +126,8 @@ export default function LoginPage() {
       <div className="flex-1 flex items-center justify-center bg-[#F8FAFC] p-8 md:p-16">
         <div className="w-full max-w-[440px] animate-in fade-in slide-in-from-bottom-2 duration-700">
           <div className="mb-12">
-            <div className="lg:hidden w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center text-white mb-6 shadow-xl shadow-indigo-100">
-              <Store size={26} />
+            <div className="lg:hidden mb-6">
+              <Logo />
             </div>
             <h2 className="text-3xl font-black tracking-tighter text-[#0F172A] mb-3">Selamat Datang</h2>
             <p className="text-[#64748B] font-medium">Masuklah dengan akun yang sudah didaftarkan.</p>
