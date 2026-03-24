@@ -73,22 +73,19 @@ class SupportTicketController extends Controller
         // 3. Newest first
         $tickets = SupportTicket::with('user.store')
             ->select('support_tickets.*')
-            ->join('users', 'support_tickets.user_id', '=', 'users.id')
+            ->leftJoin('users', 'support_tickets.user_id', '=', 'users.id')
             ->leftJoin('stores', 'users.store_id', '=', 'stores.id')
-            ->leftJoin('license_keys', function($join) {
-                $join->on('stores.id', '=', 'license_keys.store_id')
-                     ->where('license_keys.is_used', 1);
-            })
+            ->leftJoin(\Illuminate\Support\Facades\DB::raw('(SELECT store_id, MAX(duration_days) as max_duration FROM license_keys WHERE is_used = 1 GROUP BY store_id) as lk'), 
+                'stores.id', '=', 'lk.store_id')
             // PRIORITY 1: BUGS
             ->orderByRaw("CASE WHEN support_tickets.category = 'bug' THEN 0 ELSE 1 END")
             // PRIORITY 2: PREMIUM LICENSE (> 30 Days)
             ->orderByRaw("CASE 
-                WHEN stores.license_type = 'full' AND MAX(license_keys.duration_days) > 30 THEN 0 
+                WHEN stores.license_type = 'full' AND lk.max_duration > 30 THEN 0 
                 ELSE 1 
               END")
             // PRIORITY 3: CHRONOLOGICAL (Newest First)
             ->orderBy('support_tickets.created_at', 'desc')
-            ->groupBy('support_tickets.id')
             ->get();
 
         // Mark all as read by admin when viewing the list
