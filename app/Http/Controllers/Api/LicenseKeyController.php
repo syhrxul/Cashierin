@@ -108,11 +108,21 @@ class LicenseKeyController extends Controller
      */
     public function activate(Request $request)
     {
+        $user = $request->user();
+        $key = 'activate-license:' . $user->id;
+
+        if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($key, 10)) {
+            $seconds = \Illuminate\Support\Facades\RateLimiter::availableIn($key);
+            return response()->json([
+                'message' => "Terlalu banyak percobaan aktivasi. Silakan coba lagi dalam $seconds detik."
+            ], 429);
+        }
+
+        \Illuminate\Support\Facades\RateLimiter::hit($key, 120);
+
         $request->validate([
             'key' => 'required|string',
         ]);
-
-        $user = $request->user();
 
         // User harus punya toko
         if (!$user->store_id) {
