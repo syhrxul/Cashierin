@@ -264,38 +264,43 @@ class ShiftController extends Controller
      */
     public function summary(Request $request, string $id)
     {
-        $shift = Shift::findOrFail($id);
+        $shift = Shift::with('user')->findOrFail($id);
         
-        $cashSales = \App\Models\Transaction::where('shift_id', $shift->id)
+        $transactions = \App\Models\Transaction::where('shift_id', $shift->id)
             ->where('status', 'completed')
-            ->where('payment_method', 'cash')
-            ->sum('total_amount');
+            ->orderBy('created_at', 'desc')
+            ->get();
 
-        $qrisSales = \App\Models\Transaction::where('shift_id', $shift->id)
-            ->where('status', 'completed')
-            ->where('payment_method', 'qris')
-            ->sum('total_amount');
+        $transactionIds = $transactions->pluck('id');
 
-        $debitSales = \App\Models\Transaction::where('shift_id', $shift->id)
-            ->where('status', 'completed')
-            ->where('payment_method', 'debit')
-            ->sum('total_amount');
+        $itemsSold = \App\Models\TransactionItem::whereIn('transaction_id', $transactionIds)
+            ->select('product_name', 'price', \DB::raw('SUM(quantity) as total_quantity'), \DB::raw('SUM(subtotal) as total_amount'))
+            ->groupBy('product_name', 'price')
+            ->orderBy('total_quantity', 'desc')
+            ->get();
 
-        $creditSales = \App\Models\Transaction::where('shift_id', $shift->id)
-            ->where('status', 'completed')
-            ->where('payment_method', 'credit')
-            ->sum('total_amount');
+        $cashSales = $transactions->where('payment_method', 'cash')->sum('total_amount');
+        $qrisSales = $transactions->where('payment_method', 'qris')->sum('total_amount');
+        $debitSales = $transactions->where('payment_method', 'debit')->sum('total_amount');
+        $creditSales = $transactions->where('payment_method', 'credit')->sum('total_amount');
 
         return response()->json([
             'data' => [
                 'shift_id' => $shift->id,
+                'cashier_name' => $shift->user->name,
+                'status' => $shift->status,
+                'started_at' => $shift->started_at,
+                'ended_at' => $shift->ended_at,
                 'starting_cash' => (float) $shift->starting_cash,
+                'ending_cash' => (float) $shift->ending_cash,
                 'cash_sales' => (float) $cashSales,
                 'qris_sales' => (float) $qrisSales,
                 'debit_sales' => (float) $debitSales,
                 'credit_sales' => (float) $creditSales,
                 'total_sales' => (float) ($cashSales + $qrisSales + $debitSales + $creditSales),
                 'expected_drawer_cash' => (float) ($shift->starting_cash + $cashSales),
+                'items_sold' => $itemsSold,
+                'transactions' => $transactions
             ]
         ]);
     }
