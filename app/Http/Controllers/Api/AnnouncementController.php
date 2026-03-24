@@ -35,14 +35,17 @@ class AnnouncementController extends Controller
             
         // Filter targeted users IF target_user_ids is not empty
         $filtered = $announcements->filter(function ($a) use ($user) {
-            // 1. If target_role is set, user MUST have that role (e.g. 'owner')
-            if (!empty($a->target_role) && $user->role !== $a->target_role) {
+            // 1. If target_role is set (and not 'all' or empty), user MUST have that role (e.g. 'owner')
+            if ($a->target_role && $a->target_role !== 'all' && $user->role !== $a->target_role) {
                 return false;
             }
 
-            // 2. If target_user_ids is set, user MUST be in that list
-            if (empty($a->target_user_ids)) return true;
-            return in_array($user->id, $a->target_user_ids);
+            // 2. If target_user_ids is set (and not empty), user MUST be in that list
+            if (!empty($a->target_user_ids) && count($a->target_user_ids) > 0) {
+                return in_array($user->id, $a->target_user_ids);
+            }
+
+            return true;
         });
 
         return response()->json(['data' => $filtered->values()]);
