@@ -98,6 +98,7 @@ Route::middleware(['auth:sanctum', 'store.access', 'store.license', 'throttle:ap
     Route::apiResource('users', UserController::class);
 
     // Role management (Custom Roles per Store)
+    Route::get('/roles/{id}/users', [\App\Http\Controllers\Api\RoleController::class, 'users']);
     Route::apiResource('roles', \App\Http\Controllers\Api\RoleController::class);
 
     // Category routes
