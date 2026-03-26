@@ -20,7 +20,16 @@ class Store extends Model
         'license_expires_at',
         'grace_period_ends_at',
         'shift_limit_hours',
+        'default_role_id',
     ];
+
+    /**
+     * Relationship: A store has a default role for new invites.
+     */
+    public function defaultRole()
+    {
+        return $this->belongsTo(Role::class, 'default_role_id');
+    }
 
     protected $casts = [
         'is_manual_frozen' => 'boolean',

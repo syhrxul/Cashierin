@@ -64,27 +64,32 @@ class AuthController extends Controller
             'invite_code' => 'required|string',
         ]);
 
-        $store = Store::where('invite_code', $request->invite_code)->first();
+        $store = Store::with('defaultRole')->where('invite_code', $request->invite_code)->first();
 
         if (!$store) {
             return response()->json(['message' => 'Kode undangan tidak valid.'], 404);
         }
+
+        // Use store's default role if set, otherwise fallback to 'pegawai'
+        $roleName = $store->defaultRole ? $store->defaultRole->name : 'pegawai';
+        $roleId = $store->default_role_id;
 
         $user = User::create([
             'name' => $request->name,
             'username' => strtolower($request->username),
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role' => 'kasir',
+            'role' => $roleName,
+            'role_id' => $roleId,
             'store_id' => $store->id,
             'approval_status' => 'approved',
             'approved_at' => now(),
         ]);
 
-        ActivityLog::log('register_invite', "Kasir baru bergabung ke toko '{$store->name}': {$user->name}", [
+        ActivityLog::log('register_invite', "Kasir baru bergabung ke toko '{$store->name}': {$user->name} sebagai {$roleName}", [
             'user_id' => $user->id,
             'store_id' => $store->id,
-            'role' => 'kasir'
+            'role' => $roleName
         ]);
 
         $token = $user->createToken('auth_token')->plainTextToken;
