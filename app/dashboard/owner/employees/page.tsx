@@ -44,6 +44,7 @@ export default function OwnerEmployeesPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [roles, setRoles] = useState<any[]>([]);
 
   // Modal states
   const [showPasswordModal, setShowPasswordModal] = useState<any>(null);
@@ -60,14 +61,14 @@ export default function OwnerEmployeesPage() {
     username: '',
     email: '',
     password: '',
-    role: 'kasir'
+    role_id: ''
   });
 
   const [editForm, setEditForm] = useState({
     name: '',
     username: '',
     email: '',
-    role: ''
+    role_id: ''
   });
 
   const fetchEmployees = async () => {
@@ -81,15 +82,18 @@ export default function OwnerEmployeesPage() {
       const storeId = userData.store_id;
       if (!storeId) return;
 
-      const [activeRes, pendingRes, inviteRes]: any = await Promise.all([
+      const [activeRes, pendingRes, inviteRes, rolesRes]: any = await Promise.all([
         apiFetch(`/users`),
         apiFetch(`/users/pending-approvals`),
-        apiFetch(`/store/invite-code`).catch(() => ({ data: { invite_code: 'ERROR' } }))
+        apiFetch(`/store/invite-code`).catch(() => ({ data: { invite_code: 'ERROR' } })),
+        apiFetch(`/roles`).catch(() => ({ data: [] }))
       ]);
 
-      setEmployees(activeRes.data || []);
+      const activeList = activeRes.data || [];
+      setEmployees(activeList);
       setPendingEmployees(pendingRes.data || []);
       setInviteCode(inviteRes.data?.invite_code || inviteRes.invite_code || '');
+      setRoles(rolesRes.data || []);
     } catch (err) {
       console.error('Failed to fetch data', err);
       setMessage({ type: 'error', text: 'Gagal mengambil data dari server.' });
@@ -156,7 +160,7 @@ export default function OwnerEmployeesPage() {
       name: emp.name || '',
       username: emp.username || '',
       email: emp.email || '',
-      role: emp.role || ''
+      role_id: emp.role_id?.toString() || ''
     });
     setIsEditModalOpen(true);
   };
@@ -221,7 +225,7 @@ export default function OwnerEmployeesPage() {
       });
       setMessage({ type: 'success', text: 'Karyawan baru berhasil ditambahkan secara manual!' });
       setIsAddModalOpen(false);
-      setAddForm({ name: '', username: '', email: '', password: '', role: 'kasir' });
+      setAddForm({ name: '', username: '', email: '', password: '', role_id: '' });
       fetchEmployees();
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || 'Gagal menambah karyawan baru.' });
@@ -261,7 +265,8 @@ export default function OwnerEmployeesPage() {
     switch (roleLower) {
       case 'owner': return <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-indigo-100 italic">Owner</span>;
       case 'manager': return <span className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-emerald-100">Manager</span>;
-      case 'kasir': return <span className="px-3 py-1 bg-slate-50 text-slate-500 rounded-lg text-[10px] font-black uppercase tracking-widest border border-slate-100">Kasir</span>;
+      case 'pegawai': return <span className="px-3 py-1 bg-slate-50 text-slate-500 rounded-lg text-[10px] font-black uppercase tracking-widest border border-slate-100">Pegawai</span>;
+      case 'kasir': return <span className="px-3 py-1 bg-blue-50 text-blue-500 rounded-lg text-[10px] font-black uppercase tracking-widest border border-blue-100">Kasir</span>;
       default: return <span className="px-3 py-1 bg-amber-50 text-amber-600 rounded-lg text-[10px] font-black uppercase tracking-widest border border-amber-100">{role || 'Staff'}</span>;
     }
   };
@@ -593,9 +598,49 @@ export default function OwnerEmployeesPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+            <div className="space-y-12">
+              {/* Invite Code Option (Moved to Top) */}
+              <div className="relative">
+                <div className="p-8 bg-gradient-to-br from-indigo-50 to-indigo-100/30 rounded-[2.5rem] border border-indigo-100 flex flex-col md:flex-row items-center justify-between gap-10">
+                  <div className="space-y-3 flex-1">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/60 backdrop-blur-sm text-indigo-600 rounded-lg text-[9px] font-black uppercase tracking-widest border border-white/40 shadow-sm">
+                      <Zap size={10} className="animate-pulse" />
+                      Quick Method
+                    </div>
+                    <h4 className="text-xl font-black text-indigo-900 tracking-tight">Gunakan Kode Undangan</h4>
+                    <p className="text-[11px] text-indigo-700/60 font-medium leading-relaxed max-w-sm">Berikan kode unik ini kepada karyawan agar mereka dapat mendaftar sendiri dari aplikasi.</p>
+                  </div>
+
+                  <div className="shrink-0 w-full md:w-auto">
+                    <div className="bg-white/80 backdrop-blur-md p-6 rounded-3xl border border-white shadow-xl flex flex-col items-center gap-4 text-center">
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em]">Invite Code</p>
+                      <p className="text-2xl font-black text-indigo-600 tracking-[0.05em]">
+                        {inviteCode || 'LOADING...'}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(inviteCode);
+                          alert('Kode undangan berhasil disalin!');
+                        }}
+                        className="px-6 h-10 bg-indigo-600 text-white font-black text-[9px] uppercase tracking-widest rounded-xl hover:bg-indigo-700 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
+                      >
+                        <RefreshCw size={12} /> Salin Kode
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Manual Form Header */}
+              <div className="relative flex items-center gap-4">
+                <div className="h-[1px] flex-1 bg-slate-100"></div>
+                <span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.4em] bg-white px-4">Atau Input Manual</span>
+                <div className="h-[1px] flex-1 bg-slate-100"></div>
+              </div>
+
               {/* Manual Form */}
-              <div className="lg:col-span-7 space-y-8">
+              <div className="space-y-8">
                 <form onSubmit={handleCreateEmployee} className="space-y-6">
                   <div className="space-y-3">
                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Nama Lengkap Karyawan</label>
@@ -622,23 +667,27 @@ export default function OwnerEmployeesPage() {
                     </div>
                     <div className="space-y-3">
                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Role Jabatan</label>
-                      <input
-                        required
-                        type="text"
-                        list="role-list"
-                        value={addForm.role}
-                        onChange={e => setAddForm({ ...addForm, role: e.target.value })}
-                        className="w-full h-16 px-6 bg-slate-50 border-2 border-transparent focus:border-indigo-100 focus:bg-white rounded-2xl text-sm font-bold outline-none transition-all"
-                        placeholder="Contoh: Kasir, Manager, Admin..."
-                      />
-                      <datalist id="role-list">
-                        <option value="kasir" />
-                        <option value="manager" />
-                        <option value="admin" />
-                        <option value="security" />
-                        <option value="cleaner" />
-                        <option value="supervisor" />
-                      </datalist>
+                      {roles.length > 0 ? (
+                        <select
+                          required
+                          value={addForm.role_id}
+                          onChange={e => setAddForm({ ...addForm, role_id: e.target.value })}
+                          className="w-full h-16 px-6 bg-slate-50 border-2 border-transparent focus:border-indigo-100 focus:bg-white rounded-2xl text-sm font-bold outline-none transition-all appearance-none cursor-pointer"
+                        >
+                          <option value="">Pilih Role...</option>
+                          {roles.map(r => (
+                            <option key={r.id} value={r.id}>{r.name.toUpperCase()}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => router.push('/dashboard/owner/roles')}
+                          className="w-full h-16 px-6 bg-rose-50 border-2 border-dashed border-rose-200 text-rose-500 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-rose-100 transition-all"
+                        >
+                          <Zap size={14} /> Buat Role Terlebih Dahulu
+                        </button>
+                      )}
                     </div>
                   </div>
                   <div className="space-y-3">
@@ -673,54 +722,6 @@ export default function OwnerEmployeesPage() {
                     Daftarkan Karyawan Sekarang
                   </button>
                 </form>
-              </div>
-
-              {/* Invite Code Option */}
-              <div className="lg:col-span-5 relative">
-                <div className="sticky top-0 h-full p-10 bg-gradient-to-br from-indigo-50 to-indigo-100/50 rounded-[3rem] border border-indigo-100 flex flex-col justify-between gap-10">
-                  <div className="space-y-3">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/60 backdrop-blur-sm text-indigo-600 rounded-lg text-[9px] font-black uppercase tracking-widest border border-white/40 shadow-sm">
-                      <Zap size={10} className="animate-pulse" />
-                      Quick Method
-                    </div>
-                    <h4 className="text-xl font-black text-indigo-900 tracking-tight">Gunakan Kode Undangan</h4>
-                    <p className="text-[11px] text-indigo-700/60 font-medium leading-relaxed">Berikan kode unik ini kepada karyawan agar mereka dapat mendaftar sendiri dari aplikasi.</p>
-                  </div>
-
-                  <div className="relative group">
-                    <div className="absolute inset-0 bg-white/40 blur-xl group-hover:bg-white/60 transition-all opacity-50" />
-                    <div className="relative bg-white/80 backdrop-blur-md p-8 rounded-[2.5rem] border border-white shadow-xl space-y-6 text-center">
-                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.3em] mb-1">Invite Code Anda</p>
-                      <div className="overflow-hidden">
-                        <p className="text-3xl font-black text-indigo-600 tracking-[0.05em] break-all leading-tight">
-                          {inviteCode || 'LOADING...'}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(inviteCode);
-                          alert('Kode undangan berhasil disalin!');
-                        }}
-                        className="w-full h-12 bg-indigo-600 text-white font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 active:scale-95 flex items-center justify-center gap-2"
-                      >
-                        <RefreshCw size={14} /> Salin Kode
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-5">
-                    {[
-                      { step: 1, text: "Buka halaman pendaftaran" },
-                      { step: 2, text: "Masukkan kode unik toko" },
-                      { step: 3, text: "Setujui pada tab Approval" }
-                    ].map((item, idx) => (
-                      <div key={idx} className="flex gap-4 items-center">
-                        <div className="w-8 h-8 rounded-2xl bg-white shadow-sm flex items-center justify-center text-[11px] font-black text-indigo-600 shrink-0 border border-indigo-50">{item.step}</div>
-                        <p className="text-[11px] text-indigo-900/40 font-black uppercase tracking-widest">{item.text}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
               </div>
             </div>
           </div>
@@ -770,21 +771,17 @@ export default function OwnerEmployeesPage() {
                 </div>
                 <div className="space-y-3">
                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Role Jabatan</label>
-                  <input
+                  <select
                     required
-                    type="text"
-                    list="role-list-edit"
-                    value={editForm.role}
-                    onChange={e => setEditForm({ ...editForm, role: e.target.value })}
-                    className="w-full h-16 px-6 bg-slate-50 border-2 border-transparent focus:border-indigo-100 focus:bg-white rounded-2xl text-sm font-bold outline-none transition-all"
-                  />
-                  <datalist id="role-list-edit">
-                    <option value="kasir" />
-                    <option value="manager" />
-                    <option value="admin" />
-                    <option value="security" />
-                    <option value="supervisor" />
-                  </datalist>
+                    value={editForm.role_id}
+                    onChange={e => setEditForm({ ...editForm, role_id: e.target.value })}
+                    className="w-full h-16 px-6 bg-slate-50 border-2 border-transparent focus:border-indigo-100 focus:bg-white rounded-2xl text-sm font-bold outline-none transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="">Pilih Role...</option>
+                    {roles.map(r => (
+                      <option key={r.id} value={r.id}>{r.name.toUpperCase()}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 

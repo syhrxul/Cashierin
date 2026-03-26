@@ -191,24 +191,49 @@ export default function LandingPage() {
                         name: 'Starter',
                         period: '30 Hari',
                         price: '20k',
-                        desc: 'Cocok untuk toko yang baru memulai digitalisasi.',
-                        features: ['Multi-Role Access', 'Realtime POS', 'Basic Analytics', '1 Branch Store'],
+                        desc: 'Esensial untuk operasional dasar toko tunggal.',
+                        features: [
+                           'Multi-Role Access (Staff/Kasir)',
+                           'Realtime Cloud-Based POS',
+                           'Basic Sales Report (Daily)',
+                           'Manajemen Master Barang',
+                           '1 Cabang Toko Aktif',
+                           'Laporan Stok Dasar'
+                        ],
                         popular: false
                      },
                      {
                         name: 'Standard',
                         period: '90 Hari',
-                        price: '40k',
-                        desc: 'Pilihan paling populer bagi pemilik toko aktif.',
-                        features: ['Includes Starter features', 'Priority Support', 'Advanced Analytics', 'Unlimited Products'],
+                        price: '50k',
+                        desc: 'Opsi terbaik untuk toko yang sedang berkembang.',
+                        features: [
+                           'Priority Support Ticketing',
+                           'Advanced Sales Analytics',
+                           'Unlimited Product SKUs',
+                           'Inventory Alert (Low Stock)',
+                           'Customer Loyalty & Points',
+                           'Sales Trend Prediction',
+                           'Opsi Multi-Cabang Aktif'
+                        ],
                         popular: true
                      },
                      {
                         name: 'Professional',
                         period: '1 Tahun',
-                        price: '50k',
-                        desc: 'Investasi terbaik untuk operasional jangka panjang.',
-                        features: ['Includes Standard features', 'Custom Domain', 'Export Data Excel/PDF', 'Private Cloud Storage'],
+                        price: '100k',
+                        desc: 'Solusi enterprise untuk kontrol bisnis total.',
+                        features: [
+                           'Custom Domain Dashboard',
+                           'Export Data (PDF/Excel/CSV)',
+                           'Private Cloud Storage (Audit)',
+                           'Automated Cloud Backups',
+                           'Branded Digital Receipts',
+                           'API Access Integrations',
+                           'Dedicated Success Manager',
+                           'Prioritas Update Fitur Baru',
+                           'White-label Branding Opsi'
+                        ],
                         popular: false
                      }
                   ].map((plan, i) => (
@@ -233,13 +258,13 @@ export default function LandingPage() {
                            <p className="mt-6 text-slate-400 text-sm font-medium leading-relaxed italic">{plan.desc}</p>
                         </div>
 
-                        <div className="space-y-4 mb-12">
+                        <div className="space-y-4 mb-12 min-h-[320px]">
                            {plan.features.map(f => (
-                              <div key={f} className="flex items-center gap-3">
-                                 <div className="w-5 h-5 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                                    <Check size={10} />
+                              <div key={f} className="flex items-start gap-3">
+                                 <div className="w-5 h-5 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center mt-0.5 shrink-0">
+                                    <Check size={10} strokeWidth={4} />
                                  </div>
-                                 <span className="text-xs font-bold text-slate-600 tracking-tight">{f}</span>
+                                 <span className="text-[11px] font-bold text-slate-600 tracking-tight leading-tight">{f}</span>
                               </div>
                            ))}
                         </div>

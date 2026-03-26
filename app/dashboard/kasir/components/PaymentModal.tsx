@@ -95,13 +95,13 @@ export default function PaymentModal({
   if (successData) {
     return (
       <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-500">
-        <div className="bg-white w-full max-w-md rounded-[3.5rem] shadow-2xl overflow-hidden p-10 text-center space-y-8 animate-in zoom-in duration-300">
-          <div className="w-24 h-24 bg-emerald-50 text-emerald-500 rounded-[2.5rem] flex items-center justify-center mx-auto shadow-xl shadow-emerald-100 italic animate-bounce">
-            <CheckCircle2 size={48} />
+        <div className="bg-white w-full max-w-md rounded-[2.5rem] md:rounded-[3.5rem] shadow-2xl overflow-hidden p-6 md:p-10 text-center space-y-6 md:space-y-8 animate-in zoom-in duration-300">
+          <div className="w-20 h-20 md:w-24 md:h-24 bg-emerald-50 text-emerald-500 rounded-2xl md:rounded-[2.5rem] flex items-center justify-center mx-auto shadow-xl shadow-emerald-100 italic animate-bounce">
+            <CheckCircle2 className="w-10 h-10 md:w-12 md:h-12" />
           </div>
           <div>
-            <h2 className="text-3xl font-black text-slate-800 tracking-tighter">Transaksi Berhasil!</h2>
-            <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px] mt-2">Nomor Struk: {successData.receipt_number}</p>
+            <h2 className="text-2xl md:text-3xl font-black text-slate-800 tracking-tighter">Berhasil!</h2>
+            <p className="text-slate-400 font-bold uppercase tracking-widest text-[9px] md:text-[10px] mt-2">Struk: {successData.receipt_number}</p>
           </div>
 
           <div className="bg-slate-50 rounded-[2.5rem] p-8 border border-slate-100 space-y-4">
@@ -139,12 +139,12 @@ export default function PaymentModal({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4 print:hidden text-center">
-            <button onClick={() => window.print()} className="h-14 bg-white border border-slate-200 text-[#0F172A] font-black rounded-2xl flex items-center justify-center gap-2 hover:bg-slate-50 transition-all text-xs uppercase tracking-widest underline decoration-2 decoration-indigo-200 underline-offset-4">
-              <Printer size={18} /> Cetak Struk
+          <div className="grid grid-cols-2 gap-3 md:gap-4 print:hidden text-center">
+            <button onClick={() => window.print()} className="h-12 md:h-14 bg-white border border-slate-200 text-[#0F172A] font-black rounded-xl md:rounded-2xl flex items-center justify-center gap-2 hover:bg-slate-50 transition-all text-[10px] md:text-xs uppercase tracking-widest underline decoration-2 decoration-indigo-200 underline-offset-4">
+              <Printer className="w-4 h-4 md:w-[18px] md:h-[18px]" /> Struk
             </button>
-            <button onClick={handleDone} className="h-14 bg-indigo-600 text-white font-black rounded-2xl flex items-center justify-center gap-2 hover:bg-slate-900 hover:scale-105 transition-all text-xs uppercase tracking-widest shadow-xl shadow-indigo-100">
-              Transaksi Baru <ChevronRight size={16} />
+            <button onClick={handleDone} className="h-12 md:h-14 bg-indigo-600 text-white font-black rounded-xl md:rounded-2xl flex items-center justify-center gap-2 hover:bg-slate-900 transition-all text-[10px] md:text-xs uppercase tracking-widest shadow-xl shadow-indigo-100">
+              Lanjut <ChevronRight className="w-3.5 h-3.5 md:w-4 md:h-4" />
             </button>
           </div>
 
@@ -210,14 +210,14 @@ export default function PaymentModal({
       <div className="bg-white w-full max-w-4xl rounded-t-[3rem] md:rounded-[3.5rem] shadow-2xl overflow-hidden animate-in slide-in-from-bottom-10 duration-500 flex flex-col md:flex-row h-full md:h-auto max-h-[90vh]">
 
         {/* Left: Summary */}
-        <div className="flex-1 p-10 bg-slate-50 border-r border-slate-100 overflow-y-auto custom-scrollbar">
-          <div className="flex items-center gap-4 mb-10">
-            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-slate-800 shadow-sm border border-slate-200">
-              <Receipt size={24} />
+        <div className="flex-1 p-6 md:p-10 bg-slate-50 border-r border-slate-100 overflow-y-auto custom-scrollbar">
+          <div className="flex items-center gap-4 mb-6 md:mb-10">
+            <div className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-xl md:rounded-2xl flex items-center justify-center text-slate-800 shadow-sm border border-slate-200">
+              <Receipt className="w-5 h-5 md:w-6 md:h-6" />
             </div>
             <div>
-              <h3 className="text-xl font-black text-slate-800 tracking-tighter uppercase italic">Ringkasan Bill</h3>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Detail item & Pembayaran</p>
+              <h3 className="text-lg md:text-xl font-black text-slate-800 tracking-tighter uppercase italic leading-none">Ringkasan Bill</h3>
+              <p className="text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Detail item & Pembayaran</p>
             </div>
           </div>
 

@@ -105,7 +105,7 @@ export default function RegisterPage() {
               </p>
             ) : (
               <p className="text-slate-400 font-medium leading-relaxed">
-                Akun Owner Anda telah dibuat. Sesuai prosedur keamanan, silakan tunggu persetujuan Administrator sebelum Anda dapat membuat toko pertama Anda.
+                Akun Owner Anda telah aktif. Silakan langsung masuk ke Dashboard untuk membuat toko pertama Anda dan mulai berjualan!
               </p>
             )}
           </div>

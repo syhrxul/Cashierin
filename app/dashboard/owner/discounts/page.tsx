@@ -47,12 +47,32 @@ export default function OwnerDiscountsPage() {
   async function fetchData() {
     setLoading(true);
     try {
+      const storeJson = typeof window !== 'undefined' ? localStorage.getItem('store') : null;
+      const userJson = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+      const store = storeJson ? JSON.parse(storeJson) : null;
+      const user = userJson ? JSON.parse(userJson) : null;
+      const storeId = store?.id || user?.store_id;
+
+      const query = storeId ? `?store_id=${storeId}` : '';
       const [couponRes, promoRes]: any = await Promise.all([
-        apiFetch('/coupons'),
-        apiFetch('/promotions')
+        apiFetch(`/coupons${query}`),
+        apiFetch(`/promotions${query}`)
       ]);
-      setCoupons(couponRes.data || []);
-      setPromotions(promoRes.data || []);
+      
+      // Robust array extraction that handles various nested structures (data.data or data, or direct keys)
+      const extractData = (res: any) => {
+        if (!res) return [];
+        if (Array.isArray(res)) return res;
+        if (Array.isArray(res.data)) return res.data;
+        if (res.data && Array.isArray(res.data.data)) return res.data.data;
+        if (Array.isArray(res.coupons)) return res.coupons;
+        if (Array.isArray(res.promotions)) return res.promotions;
+        return [];
+      };
+
+      setCoupons(extractData(couponRes));
+      setPromotions(extractData(promoRes));
+
     } catch (err) {
       console.error('Failed to fetch data', err);
     } finally {
@@ -74,14 +94,14 @@ export default function OwnerDiscountsPage() {
     }
   };
 
-  const filteredCoupons = coupons.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase()) ||
-    c.code.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredCoupons = Array.isArray(coupons) ? coupons.filter(c =>
+    (c.name?.toLowerCase() || '').includes(search.toLowerCase()) ||
+    (c.code?.toLowerCase() || '').includes(search.toLowerCase())
+  ) : [];
 
-  const filteredPromotions = promotions.filter(p =>
-    p.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredPromotions = Array.isArray(promotions) ? promotions.filter(p =>
+    (p.name?.toLowerCase() || '').includes(search.toLowerCase())
+  ) : [];
 
   return (
     <div className="p-8 space-y-8 animate-in fade-in duration-700">
@@ -122,15 +142,27 @@ export default function OwnerDiscountsPage() {
         <div className="flex p-1.5 bg-white rounded-3xl shadow-sm border border-slate-100 shrink-0">
           <button
             onClick={() => setActiveTab('coupons')}
-            className={`px-8 h-12 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-2 ${activeTab === 'coupons' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-400 hover:bg-slate-50'}`}
+            className={`px-8 h-12 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-2 relative ${activeTab === 'coupons' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-400 hover:bg-slate-50'}`}
           >
-            <Ticket size={16} /> Kupon & Kode
+            <Ticket size={16} />
+            Kupon & Kode
+            {coupons.length > 0 && (
+              <span className={`ml-1 px-2 py-0.5 rounded-full text-[8px] ${activeTab === 'coupons' ? 'bg-white text-indigo-600' : 'bg-slate-100 text-slate-400'}`}>
+                {coupons.length}
+              </span>
+            )}
           </button>
           <button
             onClick={() => setActiveTab('promotions')}
-            className={`px-8 h-12 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-2 ${activeTab === 'promotions' ? 'bg-rose-500 text-white shadow-lg shadow-rose-100' : 'text-slate-400 hover:bg-slate-50'}`}
+            className={`px-8 h-12 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center gap-2 relative ${activeTab === 'promotions' ? 'bg-rose-500 text-white shadow-lg shadow-rose-100' : 'text-slate-400 hover:bg-slate-50'}`}
           >
-            <Sparkles size={16} /> Promosi Toko
+            <Sparkles size={16} />
+            Promosi Toko
+            {promotions.length > 0 && (
+              <span className={`ml-1 px-2 py-0.5 rounded-full text-[8px] ${activeTab === 'promotions' ? 'bg-white text-rose-600' : 'bg-slate-100 text-slate-400'}`}>
+                {promotions.length}
+              </span>
+            )}
           </button>
         </div>
 

@@ -114,14 +114,17 @@ export default function PromotionModal({ isOpen, onClose, onSuccess, promotion }
 
       const body = {
         ...formData,
-        store_id: storeId,
+        store_id: parseInt(storeId.toString()),
         discount_value: parseFloat(formData.discount_value) || 0,
         min_purchase: parseFloat(formData.min_purchase) || 0,
-        free_product_id: formData.free_product_id || null,
+        free_product_id: formData.free_product_id ? parseInt(formData.free_product_id) : null,
         free_product_qty: parseInt(formData.free_product_qty) || null,
         starts_at: formData.starts_at || null,
         expires_at: formData.expires_at || null,
-        items: formData.items.filter(it => it.product_id)
+        is_active: formData.is_active ? 1 : 0,
+        items: formData.items
+          .filter(it => it.product_id)
+          .map(it => ({ product_id: parseInt(it.product_id), quantity: it.quantity }))
       };
 
       await apiFetch(url, {

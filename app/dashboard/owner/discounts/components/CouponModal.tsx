@@ -98,12 +98,14 @@ export default function CouponModal({ isOpen, onClose, onSuccess, coupon }: Coup
 
       const body = {
         ...formData,
-        store_id: storeId,
+        store_id: parseInt(storeId.toString()),
         value: parseFloat(formData.value),
         min_purchase: parseFloat(formData.min_purchase) || 0,
         max_uses: formData.max_uses ? parseInt(formData.max_uses) : null,
         starts_at: formData.starts_at || null,
         expires_at: formData.expires_at || null,
+        is_active: formData.is_active ? 1 : 0,
+        product_ids: formData.product_ids.map(id => parseInt(id))
       };
 
       await apiFetch(url, {

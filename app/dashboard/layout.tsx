@@ -59,7 +59,9 @@ export default function DashboardLayout({
         }
       })
       .catch((err) => {
-        console.error('Profile sync failed:', err);
+        if (err.message && !err.message.includes('Unauthenticated')) {
+          console.error('Profile sync failed:', err);
+        }
       });
   }, [router]);
 
@@ -70,33 +72,52 @@ export default function DashboardLayout({
     const userRole = user.role?.toLowerCase();
     const pathParts = pathname.split('/');
 
-    // Ensure user is accessing their designated dashboard area
+    // Ensure user is accesssing their designated dashboard area
+    const isAdmin = userRole === 'superadmin';
+    const isOwner = userRole === 'owner';
+
     if (pathParts[1] === 'dashboard' && pathParts[2]) {
       const targetSection = pathParts[2];
 
-      // 1. Superadmin area
-      if (targetSection === 'superadmin' && userRole !== 'superadmin') {
-        router.replace(`/dashboard/${userRole === 'kasir' ? 'kasir' : (userRole === 'owner' || userRole === 'manager') ? 'owner' : 'superadmin'}`);
+      // 1. Superadmin area - ONLY for Superadmin
+      if (targetSection === 'superadmin' && !isAdmin) {
+        router.replace(isOwner ? '/dashboard/owner' : '/dashboard/kasir');
+        return;
       }
 
-      // 2. Owner area
-      if (targetSection === 'owner' && userRole !== 'owner' && userRole !== 'manager' && userRole !== 'superadmin') {
-        router.replace(`/dashboard/${userRole}`);
-      }
-
-      // 3. Manager area
-      if (targetSection === 'manager' && userRole !== 'manager' && userRole !== 'superadmin') {
-        router.replace(`/dashboard/${userRole}`);
-      }
-
-      // 4. Kasir area (POS)
-      if (targetSection === 'kasir' && !['kasir', 'owner', 'manager', 'superadmin'].includes(userRole)) {
-        router.replace('/login');
-      }
-
-      // 5. Special Case: Kasir role TRYING to access other things
-      if (userRole === 'kasir' && targetSection !== 'kasir') {
+      // 2. Owner area - ONLY for Owner (and Superadmin)
+      if (targetSection === 'owner' && !isOwner && !isAdmin) {
         router.replace('/dashboard/kasir');
+        return;
+      }
+
+      // 3. Granular permission check for custom roles (Staff)
+      if (!isOwner && !isAdmin) {
+        // Paths that everyone (including non-owners) can always access
+        const basePaths = ['/dashboard/kasir', '/dashboard/kasir/history', '/dashboard/kasir/profile', '/dashboard/kasir/discounts'];
+        const isBasePath = basePaths.some(bp => pathname.startsWith(bp));
+
+        if (!isBasePath) {
+          // Check permissions for owner-prefixed management pages
+          const permissions = user?.custom_role?.permissions || {};
+          const pathToPermission: Record<string, string> = {
+            '/dashboard/owner/employees': 'access_employees',
+            '/dashboard/owner/announcements': 'access_announcements',
+            '/dashboard/owner/shifts': 'access_shifts',
+            '/dashboard/owner/products': 'access_products',
+            '/dashboard/owner/discounts': 'access_discounts',
+            '/dashboard/owner/reports': 'access_reports',
+            '/dashboard/owner/support': 'access_support',
+            '/dashboard/owner/roles': 'access_roles',
+            '/dashboard/owner/settings': 'access_store_settings',
+          };
+
+          const requiredPermission = pathToPermission[Object.keys(pathToPermission).find(k => pathname.startsWith(k)) || ''];
+
+          if (!requiredPermission || !permissions[requiredPermission]) {
+            router.replace('/dashboard/kasir');
+          }
+        }
       }
     }
   }, [pathname, user, mounted, router]);
@@ -110,12 +131,12 @@ export default function DashboardLayout({
   return (
     <div className="flex h-screen bg-[#F8FAFC] text-[#0F172A] overflow-hidden">
       {/* Sidebar Desktop */}
-      <div className="hidden lg:flex shrink-0 shadow-2xl shadow-indigo-100/20 z-40">
+      <div className="hidden lg:flex shrink-0 shadow-2xl shadow-indigo-100/20">
         <DashboardSidebar />
       </div>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 h-full relative z-10">
+      <main className="flex-1 flex flex-col min-w-0 h-full relative">
         {/* Top Header - Glass Effect */}
         <header className="h-20 bg-white/80 backdrop-blur-xl border-b border-[#E2E8F0] flex items-center justify-between px-8 shrink-0 z-30">
           <div className="flex items-center gap-6 flex-1">
@@ -230,7 +251,7 @@ export default function DashboardLayout({
             </div>
           )}
 
-          <div className={`mx-auto max-w-7xl relative ${isFrozen ? 'blur-2xl opacity-40 grayscale pointer-events-none select-none overflow-hidden h-[70vh]' : 'animate-in slide-in-from-bottom-4 duration-500'}`}>
+          <div className={`mx-auto max-w-7xl relative ${isFrozen ? 'blur-2xl opacity-40 grayscale pointer-events-none select-none overflow-hidden h-[70vh]' : ''}`}>
             {children}
           </div>
         </div>

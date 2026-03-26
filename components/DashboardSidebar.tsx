@@ -77,7 +77,6 @@ const menuByRole: Record<Role, any[]> = {
           ]
         },
         { icon: FileText, label: 'Riwayat Bill', href: '/dashboard/kasir/history' },
-        { icon: LifeBuoy, label: 'Pusat Bantuan', href: '/dashboard/owner/support' },
       ]
     },
     {
@@ -85,6 +84,8 @@ const menuByRole: Record<Role, any[]> = {
         { icon: Package, label: 'Nama & Stok Barang', href: '/dashboard/owner/products' },
         { icon: Tag, label: 'Diskon & Promo', href: '/dashboard/owner/discounts' },
         { icon: FileText, label: 'Laporan Penjualan', href: '/dashboard/owner/reports' },
+        { icon: LifeBuoy, label: 'Pusat Bantuan', href: '/dashboard/owner/support' },
+        { icon: ShieldCheck, label: 'Manajemen Role', href: '/dashboard/owner/roles' },
         { icon: Settings, label: 'Setup Toko', href: '/dashboard/owner/settings' },
       ]
     },
@@ -136,6 +137,10 @@ export default function DashboardSidebar() {
       fetchUnreadCounts();
     }
 
+    // Initial check for collapse state
+    const isSidebarCollapsed = localStorage.getItem('sidebar_collapsed') === 'true';
+    setIsCollapsed(isSidebarCollapsed);
+
     const handleUpdate = () => fetchUnreadCounts();
     window.addEventListener('announcementCountUpdate', handleUpdate);
     window.addEventListener('supportCountUpdate', handleUpdate);
@@ -146,6 +151,14 @@ export default function DashboardSidebar() {
   }, []);
 
   const fetchUnreadCounts = async () => {
+    // Only fetch if superadmin or has store_id
+    const userRole = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')!).role : null;
+    const storeId = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')!).store_id : null;
+
+    if (userRole !== 'superadmin' && !storeId) {
+      return;
+    }
+
     try {
       const [annRes, supRes]: any = await Promise.all([
         apiFetch('/announcements/unread-count'),
@@ -153,11 +166,48 @@ export default function DashboardSidebar() {
       ]);
       setUnreadCount(annRes.count || 0);
       setSupportUnreadCount(supRes.count || 0);
-    } catch (err) { console.error(err); }
+    } catch (err: any) {
+      if (err.message && !err.message.includes('Unauthenticated')) {
+        console.error('[DashboardSidebar] unread count fail:', err);
+      }
+    }
   };
 
-  const groups = menuByRole[role] || [];
+  const groups = menuByRole[role] || menuByRole.owner;
   const isPending = user?.approval_status === 'pending';
+
+  // Granular Filter Logic for Custom Roles
+  const isStaff = role !== 'owner' && role !== 'superadmin';
+  const permissions = user?.custom_role?.permissions || {};
+
+  const filteredGroups = isStaff
+    ? groups.map(group => ({
+      ...group,
+      items: group.items.filter((item: any) => {
+        // Mandatory items for everyone in the dashboard
+        const mandatoryLabels = ['Dashboard', 'Kasir (POS)', 'Overview', 'Point of Sale', 'Jual (POS)', 'Riwayat Bill'];
+        if (mandatoryLabels.includes(item.label)) return true;
+
+        // Mapping keys to labels in owner menu
+        const labelToKey: Record<string, string> = {
+          'Karyawan': 'access_employees',
+          'Pengumuman': 'access_announcements',
+          'Manajemen Shift': 'access_shifts',
+          'Nama & Stok Barang': 'access_products',
+          'Diskon & Promo': 'access_discounts',
+          'Laporan Penjualan': 'access_reports',
+          'Pusat Bantuan': 'access_support',
+          'Manajemen Role': 'access_roles',
+          'Setup Toko': 'access_store_settings',
+        };
+
+        const permissionKey = labelToKey[item.label];
+        if (!permissionKey) return true; // Show if not in map (defensive)
+
+        return !!permissions[permissionKey];
+      })
+    })).filter(group => group.items.length > 0)
+    : groups;
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -178,7 +228,7 @@ export default function DashboardSidebar() {
       </div>
 
       <nav className="flex-1 px-4 space-y-8 overflow-y-auto custom-scrollbar pb-10">
-        {groups.map((group, gIdx) => (
+        {filteredGroups.map((group, gIdx) => (
           <div key={gIdx} className="space-y-2">
             {!isCollapsed && (
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#94A3B8] px-4 mb-3">
@@ -296,7 +346,12 @@ export default function DashboardSidebar() {
       </div>
 
       <button
-        onClick={() => setIsCollapsed(!isCollapsed)}
+        onClick={() => {
+          const newState = !isCollapsed;
+          setIsCollapsed(newState);
+          localStorage.setItem('sidebar_collapsed', newState.toString());
+          window.dispatchEvent(new CustomEvent('sidebarToggle', { detail: { isCollapsed: newState } }));
+        }}
         className="absolute -right-3 top-24 w-6 h-6 bg-white border border-[#E2E8F0] rounded-full flex items-center justify-center text-[#94A3B8] hover:text-[#4F46E5] hover:border-[#4F46E5] transition-all z-10 shadow-sm"
       >
         {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}

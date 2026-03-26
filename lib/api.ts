@@ -56,7 +56,10 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
     }
 
     if (!response.ok) {
-      console.error(`[API Error] Status ${response.status}:`, { url, data });
+      // Don't log 401 as an "Error" if we're already handling it via redirect
+      if (response.status !== 401) {
+        console.error(`[API Error] Status ${response.status}:`, { url, data });
+      }
 
       // Handle Laravel Validation Errors (422)
       if (response.status === 422 && data.errors) {
@@ -65,6 +68,7 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
       }
 
       // Handle specific status codes
+      if (response.status === 401) throw new Error('Unauthenticated');
       if (response.status === 403) throw new Error(data.message || 'Izin akses ditolak (403).');
       if (response.status === 404) throw new Error(data.message || 'Endpoint tidak ditemukan (404).');
       if (response.status === 500) throw new Error(data.message || 'Terjadi kesalahan internal pada server (500).');
@@ -74,7 +78,10 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
 
     return data;
   } catch (error: any) {
-    console.error('[Network/API Fetch Error]:', error);
+    const isAuthError = error.message?.includes('Unauthenticated');
+    if (!isAuthError) {
+      console.error('[Network/API Fetch Error]:', error);
+    }
     throw error;
   }
 }

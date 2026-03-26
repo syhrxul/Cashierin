@@ -30,35 +30,38 @@ export default function DashboardIndex() {
       };
 
       try {
-        console.log('Fetching latest user data to verify role...');
         const user = await apiFetch('/user');
-
-        // Update local storage with fresh data including latest role
         localStorage.setItem('user', JSON.stringify(user));
 
-        const role = user.role?.toLowerCase() || 'superadmin';
-        console.log('Latest user role from server:', role);
+        const role = user.role?.toLowerCase() || 'kasir';
 
-        const targetPath = roleMap[role] || '/dashboard/superadmin';
-        console.log('REDIRECT TARGET (FRESH):', targetPath);
-        router.replace(targetPath);
-      } catch (err) {
-        console.error('Failed to fetch fresh user data, falling back to localStorage:', err);
-
-        // Fallback to localStorage if API is down
-        const userJson = localStorage.getItem('user');
-        let role = 'superadmin';
-
-        if (userJson) {
-          try {
-            const user = JSON.parse(userJson);
-            role = user.role?.toLowerCase() || 'superadmin';
-          } catch (e) { }
+        // 1. Superadmin Area
+        if (role === 'superadmin') {
+          router.replace('/dashboard/superadmin');
+          return;
         }
 
-        const targetPath = roleMap[role] || '/dashboard/superadmin';
-        console.log('REDIRECT TARGET (FALLBACK):', targetPath);
-        router.replace(targetPath);
+        // 2. Owner Area
+        if (role === 'owner') {
+          router.replace('/dashboard/owner');
+          return;
+        }
+
+        // 3. For ALL other roles (kasir, manager, or any custom role), go to KASIR dashboard
+        router.replace('/dashboard/kasir');
+
+      } catch (err) {
+        console.error('Auth verification failed:', err);
+        const userJson = localStorage.getItem('user');
+        if (userJson) {
+          const user = JSON.parse(userJson);
+          const role = user.role?.toLowerCase() || 'kasir';
+          if (role === 'superadmin') router.replace('/dashboard/superadmin');
+          else if (role === 'owner') router.replace('/dashboard/owner');
+          else router.replace('/dashboard/kasir');
+        } else {
+          router.replace('/login');
+        }
       }
     };
 
