@@ -32,7 +32,8 @@ class AuthController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'role' => 'owner',
-            'approval_status' => 'pending',
+            'approval_status' => 'approved',
+            'approved_at' => now(),
         ]);
 
         ActivityLog::log('register', "Pendaftaran Owner baru: {$user->name} (@{$user->username})", [
@@ -43,10 +44,10 @@ class AuthController extends Controller
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'message' => 'Registrasi berhasil. Akun Anda perlu disetujui Administrator sebelum dapat membuat toko.',
+            'message' => 'Registrasi berhasil. Akun Owner Anda telah aktif, silakan lanjutkan untuk membuat toko pertama Anda.',
             'user' => new UserResource($user),
             'token' => $token,
-            'approval_status' => 'pending',
+            'approval_status' => 'approved',
         ], 201);
     }
 
