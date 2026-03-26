@@ -15,7 +15,8 @@ class UserController extends Controller
     public function index(Request $request)
     {
         if (!$request->user()->hasPermission('access_employees')) {
-            return response()->json(['message' => 'Izin akses manajemen karyawan ditolak.'], 403);
+            $u = $request->user();
+            return response()->json(['message' => "Izin manajemen karyawan ditolak. (Role: {$u->role}, RoleID: " . ($u->role_id ?? 'None') . ")"], 403);
         }
         $query = User::where('store_id', $request->store_id);
 
@@ -45,7 +46,7 @@ class UserController extends Controller
 
         if (!$user->hasPermission('access_employees')) {
             return response()->json([
-                'message' => 'Hanya owner atau manager yang dapat melihat daftar approval.'
+                'message' => "Hanya owner atau manajer dengan izin HR yang dapat melihat daftar ini. (Role: {$user->role}, ID: " . ($user->role_id ?? 'None') . ")"
             ], 403);
         }
 

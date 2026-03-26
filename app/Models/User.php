@@ -118,19 +118,31 @@ class User extends Authenticatable
      */
     public function hasPermission(string $permission): bool
     {
+        // 1. Superadmin and Owner always have full access
         if (in_array($this->role, ['superadmin', 'owner'])) {
             return true;
         }
 
+        // 2. Check Custom Role permissions
         if ($this->role_id) {
-            // Load relationship if not already loaded
-            if (!$this->relationLoaded('customRole')) {
-                $this->load('customRole');
+            // First try existing relationship
+            $rolePermissions = null;
+            if ($this->customRole && $this->customRole->permissions) {
+                $rolePermissions = $this->customRole->permissions;
+            } else {
+                // FALLBACK: Query DB directly which escapes global scopes/scopes
+                $dbRole = \Illuminate\Support\Facades\DB::table('roles')->where('id', $this->role_id)->first();
+                if ($dbRole && $dbRole->permissions) {
+                    $rolePermissions = json_decode($dbRole->permissions, true);
+                }
             }
-            return $this->customRole->permissions[$permission] ?? false;
+
+            if ($rolePermissions) {
+                return isset($rolePermissions[$permission]) && (bool)$rolePermissions[$permission];
+            }
         }
 
-        // Fallback for legacy roles (if any)
+        // 3. Fallback for legacy managers (if no custom role is assigned)
         return $this->role === 'manager';
     }
 }
