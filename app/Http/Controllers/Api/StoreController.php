@@ -144,9 +144,10 @@ class StoreController extends Controller
             'address' => 'nullable|string|max:500',
             'business_hours' => 'nullable|string|max:255',
             'business_category' => 'nullable|string|max:255',
+            'default_role_id' => 'nullable|exists:roles,id',
         ]);
 
-        $data = $request->only(['name', 'address', 'business_hours', 'business_category']);
+        $data = $request->only(['name', 'address', 'business_hours', 'business_category', 'default_role_id']);
         if ($user->role === 'superadmin' && $request->has('user_id')) {
             $data['user_id'] = $request->user_id;
         }
@@ -289,6 +290,7 @@ class StoreController extends Controller
                 'business_category' => $store->business_category,
                 'is_manual_frozen' => $store->is_manual_frozen,
                 'shift_limit_hours' => $store->shift_limit_hours ?? 8,
+                'default_role_id' => $store->default_role_id,
             ]
         ]);
     }
@@ -324,9 +326,10 @@ class StoreController extends Controller
             'business_hours' => 'nullable|string|max:255',
             'business_category' => 'nullable|string|max:255',
             'shift_limit_hours' => 'nullable|integer|min:1|max:24',
+            'default_role_id' => 'nullable|exists:roles,id',
         ]);
 
-        $store->update($request->only(['name', 'address', 'business_hours', 'business_category', 'shift_limit_hours']));
+        $store->update($request->only(['name', 'address', 'business_hours', 'business_category', 'shift_limit_hours', 'default_role_id']));
 
         return response()->json([
             'message' => 'Informasi toko berhasil diperbarui.',
