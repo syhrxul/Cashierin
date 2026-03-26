@@ -111,4 +111,26 @@ class User extends Authenticatable
     {
         return $this->belongsTo(User::class, 'approved_by');
     }
+
+    /**
+     * Helper to check if user has a specific permission.
+     * Owners and Superadmins have all permissions by default.
+     */
+    public function hasPermission(string $permission): bool
+    {
+        if (in_array($this->role, ['superadmin', 'owner'])) {
+            return true;
+        }
+
+        if ($this->role_id) {
+            // Load relationship if not already loaded
+            if (!$this->relationLoaded('customRole')) {
+                $this->load('customRole');
+            }
+            return $this->customRole->permissions[$permission] ?? false;
+        }
+
+        // Fallback for legacy roles (if any)
+        return $this->role === 'manager';
+    }
 }

@@ -13,6 +13,9 @@ class RoleController extends Controller
      */
     public function index(Request $request)
     {
+        if (!$request->user()->hasPermission('access_roles')) {
+            return response()->json(['message' => 'Anda tidak memiliki hak akses manajemen role.'], 403);
+        }
         $roles = Role::withCount('users')->get();
         return response()->json(['data' => $roles]);
     }
@@ -22,6 +25,9 @@ class RoleController extends Controller
      */
     public function store(Request $request)
     {
+        if (!$request->user()->hasPermission('access_roles')) {
+            return response()->json(['message' => 'Anda tidak memiliki hak akses untuk membuat role baru.'], 403);
+        }
         $request->validate([
             'name' => 'required|string|max:50|regex:/^[a-zA-Z\s]+$/',
             'permissions' => 'nullable|array',
@@ -64,6 +70,9 @@ class RoleController extends Controller
      */
     public function update(Request $request, string $id)
     {
+        if (!$request->user()->hasPermission('access_roles')) {
+            return response()->json(['message' => 'Anda tidak memiliki hak akses untuk mengubah role.'], 403);
+        }
         $role = Role::findOrFail($id);
 
         $request->validate([
@@ -100,6 +109,9 @@ class RoleController extends Controller
      */
     public function destroy(string $id)
     {
+        if (request()->user() && !request()->user()->hasPermission('access_roles')) {
+            return response()->json(['message' => 'Anda tidak memiliki hak akses untuk menghapus role.'], 403);
+        }
         $role = Role::findOrFail($id);
         
         // Check if role has users

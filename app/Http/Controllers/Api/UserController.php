@@ -14,6 +14,9 @@ class UserController extends Controller
      */
     public function index(Request $request)
     {
+        if (!$request->user()->hasPermission('access_employees')) {
+            return response()->json(['message' => 'Izin akses manajemen karyawan ditolak.'], 403);
+        }
         $query = User::where('store_id', $request->store_id);
 
         if ($request->has('role')) {
@@ -40,7 +43,7 @@ class UserController extends Controller
     {
         $user = $request->user();
 
-        if (!in_array($user->role, ['superadmin', 'owner', 'manager'])) {
+        if (!$user->hasPermission('access_employees')) {
             return response()->json([
                 'message' => 'Hanya owner atau manager yang dapat melihat daftar approval.'
             ], 403);
@@ -60,9 +63,9 @@ class UserController extends Controller
     {
         $currentUser = $request->user();
 
-        if (!in_array($currentUser->role, ['superadmin', 'owner', 'manager'])) {
+        if (!$currentUser->hasPermission('access_employees')) {
             return response()->json([
-                'message' => 'Hanya owner atau manager yang dapat menyetujui user.'
+                'message' => 'Hanya pimpinan atau bagian HR yang dapat menyetujui user baru.'
             ], 403);
         }
 

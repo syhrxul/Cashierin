@@ -186,9 +186,9 @@ class StoreController extends Controller
     {
         $user = $request->user();
 
-        if (!in_array($user->role, ['superadmin', 'owner', 'manager'])) {
+        if (!$user->hasPermission('access_employees')) {
             return response()->json([
-                'message' => 'Hanya owner atau manager yang dapat melihat kode undangan.'
+                'message' => 'Anda tidak memiliki izin akses untuk melihat kode undangan toko.'
             ], 403);
         }
 
@@ -208,9 +208,9 @@ class StoreController extends Controller
     {
         $user = $request->user();
 
-        if (!in_array($user->role, ['superadmin', 'owner'])) {
+        if (!$user->hasPermission('access_employees')) {
             return response()->json([
-                'message' => 'Hanya owner yang dapat me-reset kode undangan.'
+                'message' => 'Hanya pimpinan atau pemegang akses HR yang dapat me-reset kode undangan.'
             ], 403);
         }
 

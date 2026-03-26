@@ -35,6 +35,9 @@ class CategoryController extends Controller
      */
     public function store(Request $request)
     {
+        if (!$request->user()->hasPermission('access_products')) {
+            return response()->json(['message' => 'Anda tidak memiliki hak akses untuk mengelola kategori.'], 403);
+        }
         $request->validate([
             'store_id' => 'required|exists:stores,id',
             'name' => 'required|string|max:255',
@@ -72,6 +75,9 @@ class CategoryController extends Controller
      */
     public function update(Request $request, string $id)
     {
+        if (!$request->user()->hasPermission('access_products')) {
+            return response()->json(['message' => 'Anda tidak memiliki hak akses untuk mengelola kategori.'], 403);
+        }
         $category = Category::findOrFail($id);
 
         if ($request->has('store_id') && (int) $category->store_id !== (int) $request->store_id) {
@@ -98,6 +104,9 @@ class CategoryController extends Controller
      */
     public function destroy(Request $request, string $id)
     {
+        if (!$request->user()->hasPermission('access_products')) {
+            return response()->json(['message' => 'Anda tidak memiliki hak akses untuk mengelola kategori.'], 403);
+        }
         $category = Category::findOrFail($id);
 
         if ($request->has('store_id') && (int) $category->store_id !== (int) $request->store_id) {
