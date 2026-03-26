@@ -115,4 +115,14 @@ class RoleController extends Controller
             'message' => 'Role berhasil dihapus.'
         ]);
     }
+
+    /**
+     * Get all users belonging to this role.
+     */
+    public function users(string $id)
+    {
+        $role = Role::findOrFail($id);
+        $users = $role->users()->select('id', 'name', 'username', 'email', 'role', 'phone', 'last_seen_at')->get();
+        return response()->json(['data' => $users]);
+    }
 }
