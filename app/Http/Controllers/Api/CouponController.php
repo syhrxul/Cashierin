@@ -34,10 +34,7 @@ class CouponController extends Controller
     {
         $request->validate([
             'store_id'     => 'required|exists:stores,id',
-            'code'         => [
-                'required', 'string', 'max:50',
-                Rule::unique('coupons')->where('store_id', $request->store_id)
-            ],
+            'code'         => 'required|string|max:50|unique:coupons,code,NULL,id,store_id,' . $request->store_id,
             'name'         => 'required|string|max:255',
             'type'         => 'required|in:percentage,fixed',
             'value'        => 'required|numeric|min:0',
@@ -97,10 +94,7 @@ class CouponController extends Controller
         }
 
         $request->validate([
-            'code'         => [
-                'sometimes', 'string', 'max:50',
-                Rule::unique('coupons')->ignore($coupon->id)->where('store_id', $coupon->store_id)
-            ],
+            'code'         => 'sometimes|string|max:50|unique:coupons,code,' . $coupon->id . ',id,store_id,' . $coupon->store_id,
             'name'         => 'sometimes|string|max:255',
             'type'         => 'sometimes|in:percentage,fixed',
             'value'        => 'sometimes|numeric|min:0',
