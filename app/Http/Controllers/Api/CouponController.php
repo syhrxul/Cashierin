@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Coupon;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class CouponController extends Controller
 {
@@ -33,7 +34,10 @@ class CouponController extends Controller
     {
         $request->validate([
             'store_id'     => 'required|exists:stores,id',
-            'code'         => 'required|string|unique:coupons,code|max:50',
+            'code'         => [
+                'required', 'string', 'max:50',
+                Rule::unique('coupons')->where('store_id', $request->store_id)
+            ],
             'name'         => 'required|string|max:255',
             'type'         => 'required|in:percentage,fixed',
             'value'        => 'required|numeric|min:0',
@@ -93,7 +97,10 @@ class CouponController extends Controller
         }
 
         $request->validate([
-            'code'         => 'sometimes|string|unique:coupons,code,' . $coupon->id . '|max:50',
+            'code'         => [
+                'sometimes', 'string', 'max:50',
+                Rule::unique('coupons')->ignore($coupon->id)->where('store_id', $coupon->store_id)
+            ],
             'name'         => 'sometimes|string|max:255',
             'type'         => 'sometimes|in:percentage,fixed',
             'value'        => 'sometimes|numeric|min:0',

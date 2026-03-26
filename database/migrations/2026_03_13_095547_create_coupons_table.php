@@ -11,7 +11,8 @@ return new class extends Migration
         Schema::create('coupons', function (Blueprint $table) {
             $table->id();
             $table->foreignId('store_id')->constrained()->cascadeOnDelete();
-            $table->string('code')->unique();
+            $table->string('code');
+            $table->unique(['store_id', 'code']);
             $table->string('name');
             $table->enum('type', ['percentage', 'fixed'])->default('fixed');
             $table->decimal('value', 15, 2); // Nilai diskon (% atau nominal)
