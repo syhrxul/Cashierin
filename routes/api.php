@@ -33,7 +33,7 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/approval-status', [AuthController::class, 'approvalStatus']);
     Route::get('/user', function (Request $request) {
-        return $request->user();
+        return $request->user()->load('customRole');
     });
 
     // License key routes
