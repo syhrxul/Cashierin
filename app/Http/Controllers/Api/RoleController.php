@@ -13,7 +13,11 @@ class RoleController extends Controller
      */
     public function index(Request $request)
     {
-        if (!$request->user()->hasPermission('access_roles')) {
+        // Allowed if user can manage employees OR manage roles
+        $canAccess = $request->user()->hasPermission('access_roles') || 
+                     $request->user()->hasPermission('access_employees');
+
+        if (!$canAccess) {
             return response()->json(['message' => 'Anda tidak memiliki hak akses manajemen role.'], 403);
         }
         $roles = Role::withCount('users')->get();
