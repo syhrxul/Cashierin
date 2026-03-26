@@ -1,0 +1,17 @@
+
+> cashierin@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.0 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.0.2:3000
+✓ Ready in 515ms
+
+⚠ metadataBase property in metadata export is not set for resolving social open graph or twitter images, using "http://localhost:3000". See https://nextjs.org/docs/app/api-reference/functions/generate-metadata#metadatabase
+ GET /login 200 in 542ms (next.js: 251ms, application-code: 291ms)
+ GET /dashboard 200 in 90ms (next.js: 41ms, application-code: 50ms)
+ GET /dashboard/owner/products 200 in 283ms (next.js: 41ms, application-code: 242ms)
+ GET /login 200 in 87ms (next.js: 6ms, application-code: 81ms)
+ GET /login 200 in 106ms (next.js: 7ms, application-code: 99ms)
+ GET /dashboard/owner/employees 200 in 150ms (next.js: 32ms, application-code: 118ms)
+ GET /login 200 in 38ms (next.js: 5ms, application-code: 32ms)
