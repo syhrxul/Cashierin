@@ -216,6 +216,10 @@ class UserController extends Controller
             'role' => 'sometimes|string|max:50',
         ]);
 
+        if ($request->has('role') && str_contains(strtolower($request->role), 'superadmin')) {
+            return response()->json(['message' => 'Nama role tidak boleh mengandung unsur superadmin.'], 403);
+        }
+
         $data = $request->only(['name', 'username', 'email', 'role']);
 
         if (isset($data['username'])) {
