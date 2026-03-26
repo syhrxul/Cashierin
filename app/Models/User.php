@@ -30,9 +30,17 @@ class User extends Authenticatable
         'role',
         'approval_status',
         'approved_by',
-        'approved_at',
+        'role_id',
         'last_seen_at',
     ];
+
+    /**
+     * Relationship: A user belongs to a custom role.
+     */
+    public function customRole()
+    {
+        return $this->belongsTo(Role::class, 'role_id');
+    }
 
     /**
      * The attributes that should be hidden for serialization.

@@ -29,7 +29,7 @@ class UserController extends Controller
         }
 
         return response()->json([
-            'data' => $query->with('approvedByUser')->get()
+            'data' => $query->with(['approvedByUser', 'customRole'])->get()
         ]);
     }
 
@@ -148,7 +148,8 @@ class UserController extends Controller
             'username' => 'required|string|max:50|unique:users,username|alpha_dash',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
-            'role' => 'required|string|max:50',
+            'role' => 'nullable|string|max:50',
+            'role_id' => 'required|exists:roles,id',
         ]);
 
         if (str_contains(strtolower($request->role), 'superadmin')) {
@@ -169,7 +170,8 @@ class UserController extends Controller
             'username' => strtolower($request->username),
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role' => $request->role,
+            'role' => \App\Models\Role::find($request->role_id)->name,
+            'role_id' => $request->role_id,
             'store_id' => $request->store_id,
             'approval_status' => 'approved',
             'approved_by' => $currentUser->id,
@@ -213,7 +215,8 @@ class UserController extends Controller
             'username' => 'sometimes|string|max:50|alpha_dash|unique:users,username,' . $user->id,
             'email' => 'sometimes|string|email|max:255|unique:users,email,' . $user->id,
             'password' => 'sometimes|string|min:8',
-            'role' => 'sometimes|string|max:50',
+            'role' => 'sometimes|nullable|string|max:50',
+            'role_id' => 'sometimes|required|exists:roles,id',
         ]);
 
         if ($request->has('role') && str_contains(strtolower($request->role), 'superadmin')) {
@@ -228,6 +231,11 @@ class UserController extends Controller
 
         if ($request->has('password')) {
             $data['password'] = Hash::make($request->password);
+        }
+
+        if ($request->has('role_id')) {
+            $data['role_id'] = $request->role_id;
+            $data['role'] = \App\Models\Role::find($request->role_id)->name;
         }
 
         $user->update($data);

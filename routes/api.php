@@ -97,6 +97,9 @@ Route::middleware(['auth:sanctum', 'store.access', 'store.license', 'throttle:ap
     Route::post('/users/{id}/change-password', [UserController::class, 'changePassword']);
     Route::apiResource('users', UserController::class);
 
+    // Role management (Custom Roles per Store)
+    Route::apiResource('roles', \App\Http\Controllers\Api\RoleController::class);
+
     // Category routes
     Route::apiResource('categories', CategoryController::class);
 

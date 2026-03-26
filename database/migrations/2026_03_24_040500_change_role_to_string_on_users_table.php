@@ -21,6 +21,11 @@ return new class extends Migration
      */
     public function down(): void
     {
+        // Sanitize data first: revert unknown roles to a known enum value to prevent truncation errors
+        \Illuminate\Support\Facades\DB::table('users')
+            ->whereNotIn('role', ['superadmin', 'owner', 'manager', 'kasir', 'dapur'])
+            ->update(['role' => 'kasir']);
+
         Schema::table('users', function (Blueprint $table) {
             $table->enum('role', ['superadmin', 'owner', 'manager', 'kasir', 'dapur'])->default('owner')->change();
         });
