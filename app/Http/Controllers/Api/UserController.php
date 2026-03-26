@@ -151,6 +151,10 @@ class UserController extends Controller
             'role' => 'required|string|max:50',
         ]);
 
+        if (str_contains(strtolower($request->role), 'superadmin')) {
+            return response()->json(['message' => 'Nama role tidak boleh mengandung unsur superadmin.'], 403);
+        }
+
         $store = \App\Models\Store::findOrFail($request->store_id);
         
         // Cek batasan Trial (Maks 2 Karyawan selain Owner)
