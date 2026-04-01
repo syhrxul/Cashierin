@@ -85,21 +85,20 @@ export default function DashboardLayout({
         return;
       }
 
-      // 2. Owner area - ONLY for Owner (and Superadmin)
-      if (targetSection === 'owner' && !isOwner && !isAdmin) {
-        router.replace('/dashboard/kasir');
-        return;
-      }
-
-      // 3. Granular permission check for custom roles (Staff)
+      // 2. Granular permission check for custom roles (Staff/Manager)
       if (!isOwner && !isAdmin) {
         // Paths that everyone (including non-owners) can always access
-        const basePaths = ['/dashboard/kasir', '/dashboard/kasir/history', '/dashboard/kasir/profile', '/dashboard/kasir/discounts'];
+        const basePaths = ['/dashboard/kasir', '/dashboard/kasir/history', '/dashboard/kasir/profile', '/dashboard/kasir/discounts', '/dashboard/kasir/announcements'];
         const isBasePath = basePaths.some(bp => pathname.startsWith(bp));
 
         if (!isBasePath) {
-          // Check permissions for owner-prefixed management pages
-          const permissions = user?.custom_role?.permissions || {};
+          // Check permissions for management pages
+          let permissions = user?.custom_role?.permissions || [];
+          if (typeof permissions === 'string') {
+            try { permissions = JSON.parse(permissions); } catch (e) { permissions = []; }
+          }
+          const hasPermission = (key: string) => Array.isArray(permissions) ? permissions.includes(key) : !!permissions[key];
+
           const pathToPermission: Record<string, string> = {
             '/dashboard/owner/employees': 'access_employees',
             '/dashboard/owner/announcements': 'access_announcements',
@@ -112,10 +111,26 @@ export default function DashboardLayout({
             '/dashboard/owner/settings': 'access_store_settings',
           };
 
-          const requiredPermission = pathToPermission[Object.keys(pathToPermission).find(k => pathname.startsWith(k)) || ''];
+          // Find if the current path requires a permission
+          const matchedPath = Object.keys(pathToPermission).find(k => pathname.startsWith(k));
 
-          if (!requiredPermission || !permissions[requiredPermission]) {
-            router.replace('/dashboard/kasir');
+          if (matchedPath) {
+            const requiredPermission = pathToPermission[matchedPath];
+            if (!hasPermission(requiredPermission)) {
+              router.replace('/dashboard/kasir');
+              return;
+            }
+          } else if (pathname === '/dashboard/owner') {
+              // Only allow direct access to owner dashboard root if they are that role
+              // Or if they have a role that defaults to it.
+              if (targetSection === 'owner' && !isOwner) {
+                  router.replace('/dashboard/kasir');
+                  return;
+              }
+          } else if (targetSection === 'owner') {
+             // If trying to access unknown sub-path under owner without being owner
+             router.replace('/dashboard/kasir');
+             return;
           }
         }
       }

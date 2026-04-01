@@ -57,7 +57,7 @@ export default function AnnouncementsManagement({ role }: AnnouncementsManagemen
 
   const fetchUsers = async () => {
     try {
-      let endpoint = role === 'superadmin' ? '/superadmin/users' : '/users';
+      const endpoint = role === 'superadmin' ? '/superadmin/users' : '/users';
       let query = '';
       if (role === 'superadmin' && form.scope === 'store' && form.store_id) {
         query = `?store_id=${form.store_id}`;
