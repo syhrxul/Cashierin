@@ -178,14 +178,18 @@ export default function DashboardSidebar() {
 
   // Granular Filter Logic for Custom Roles
   const isStaff = role !== 'owner' && role !== 'superadmin';
-  const permissions = user?.custom_role?.permissions || {};
+  let permissions = user?.custom_role?.permissions || [];
+  if (typeof permissions === 'string') {
+    try { permissions = JSON.parse(permissions); } catch (e) { permissions = []; }
+  }
+  const hasPermission = (key: string) => Array.isArray(permissions) ? permissions.includes(key) : !!permissions[key];
 
   const filteredGroups = isStaff
     ? groups.map(group => ({
       ...group,
       items: group.items.filter((item: any) => {
         // Mandatory items for everyone in the dashboard
-        const mandatoryLabels = ['Dashboard', 'Kasir (POS)', 'Overview', 'Point of Sale', 'Jual (POS)', 'Riwayat Bill'];
+        const mandatoryLabels = ['Dashboard', 'Kasir (POS)', 'Overview', 'Point of Sale', 'Jual (POS)', 'Riwayat Bill', 'Info Diskon', 'Jadwal & Shift'];
         if (mandatoryLabels.includes(item.label)) return true;
 
         // Mapping keys to labels in owner menu
@@ -194,8 +198,10 @@ export default function DashboardSidebar() {
           'Pengumuman': 'access_announcements',
           'Manajemen Shift': 'access_shifts',
           'Nama & Stok Barang': 'access_products',
+          'Manajemen Stok': 'access_products', // Manager specific label
           'Diskon & Promo': 'access_discounts',
           'Laporan Penjualan': 'access_reports',
+          'Reports': 'access_reports', // Manager specific label
           'Pusat Bantuan': 'access_support',
           'Manajemen Role': 'access_roles',
           'Setup Toko': 'access_store_settings',
@@ -204,7 +210,7 @@ export default function DashboardSidebar() {
         const permissionKey = labelToKey[item.label];
         if (!permissionKey) return true; // Show if not in map (defensive)
 
-        return !!permissions[permissionKey];
+        return hasPermission(permissionKey);
       })
     })).filter(group => group.items.length > 0)
     : groups;
